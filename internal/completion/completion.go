@@ -3,6 +3,8 @@ package completion
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
 	"dp/internal/aliases"
 	"dp/internal/api"
@@ -18,18 +20,28 @@ const (
 )
 
 func Generate(shell Shell) error {
+	binaryName := getBinaryName()
+
 	switch shell {
 	case ShellBash:
-		fmt.Print(bashCompletionScript)
+		fmt.Print(renderBashCompletion(binaryName))
 	case ShellZsh:
-		fmt.Print(zshCompletionScript)
+		fmt.Print(renderZshCompletion(binaryName))
 	case ShellFish:
-		fmt.Print(fishCompletionScript)
+		fmt.Print(renderFishCompletion(binaryName))
 	default:
 		return fmt.Errorf("unsupported shell: %s (use bash, zsh, or fish)", shell)
 	}
 
 	return nil
+}
+
+func getBinaryName() string {
+	name := os.Args[0]
+	if idx := strings.LastIndex(name, "/"); idx >= 0 {
+		name = name[idx+1:]
+	}
+	return name
 }
 
 func ListAliases(ctx context.Context) error {
@@ -59,8 +71,9 @@ func ListAliases(ctx context.Context) error {
 	return nil
 }
 
-var bashCompletionScript = `# bash completion for dp
-_dp_servers() {
+func renderBashCompletion(name string) string {
+	return `# bash completion for ` + name + `
+_dp() {
     local cur prev words cword
     _init_completion || return
 
@@ -70,7 +83,7 @@ _dp_servers() {
         case "${words[1]}" in
             ssh|show)
                 local -a aliases
-                if aliases=($(dp aliases 2>/dev/null)); then
+                if aliases=($(` + name + ` aliases 2>/dev/null)); then
                     COMPREPLY=($(compgen -W "${aliases[*]}" -- "$cur"))
                 fi
                 ;;
@@ -81,11 +94,13 @@ _dp_servers() {
     fi
 }
 
-complete -F _dp_servers dp
+complete -F _dp ` + name + `
 `
+}
 
-var zshCompletionScript = `# zsh completion for dp
-_dp_servers() {
+func renderZshCompletion(name string) string {
+	return `# zsh completion for ` + name + `
+_dp() {
     local -a commands
     commands=(
         "show:List servers with optional regex filter"
@@ -100,7 +115,7 @@ _dp_servers() {
         case "${words[2]}" in
             ssh|show)
                 local -a aliases
-                aliases=($(dp aliases 2>/dev/null))
+                aliases=($(` + name + ` aliases 2>/dev/null))
                 _describe "alias" aliases
                 ;;
             completion)
@@ -110,11 +125,13 @@ _dp_servers() {
     fi
 }
 
-compdef _dp_servers dp
+compdef _dp ` + name + `
 `
+}
 
-var fishCompletionScript = `# fish completion for dp
-function __fish_dp_servers_needs_command
+func renderFishCompletion(name string) string {
+	return `# fish completion for ` + name + `
+function __fish_dp_needs_command
     set -l cmd (commandline -opc)
     if test (count $cmd) -eq 1
         return 0
@@ -122,7 +139,7 @@ function __fish_dp_servers_needs_command
     return 1
 end
 
-function __fish_dp_servers_using_command
+function __fish_dp_using_command
     set -l cmd (commandline -opc)
     if test (count $cmd) -gt 1
         if test "$cmd[2]" = "$argv[1]"
@@ -132,16 +149,17 @@ function __fish_dp_servers_using_command
     return 1
 end
 
-function __fish_dp_servers_get_aliases
-    dp aliases 2>/dev/null
+function __fish_dp_get_aliases
+    ` + name + ` aliases 2>/dev/null
 end
 
-complete -c dp -f -n '__fish_dp_servers_needs_command'
-complete -c dp -a 'show' -d 'List servers with optional regex filter'
-complete -c dp -a 'ssh' -d 'SSH to server by alias'
-complete -c dp -a 'completion' -d 'Generate completion script'
-complete -c dp -a 'aliases' -d 'List all server aliases'
+complete -c ` + name + ` -f -n '__fish_dp_needs_command'
+complete -c ` + name + ` -a 'show' -d 'List servers with optional regex filter'
+complete -c ` + name + ` -a 'ssh' -d 'SSH to server by alias'
+complete -c ` + name + ` -a 'completion' -d 'Generate completion script'
+complete -c ` + name + ` -a 'aliases' -d 'List all server aliases'
 
-complete -c dp -f -n '__fish_dp_servers_using_command show' -a '(__fish_dp_servers_get_aliases)'
-complete -c dp -f -n '__fish_dp_servers_using_command ssh' -a '(__fish_dp_servers_get_aliases)'
+complete -c ` + name + ` -f -n '__fish_dp_using_command show' -a '(__fish_dp_get_aliases)'
+complete -c ` + name + ` -f -n '__fish_dp_using_command ssh' -a '(__fish_dp_get_aliases)'
 `
+}
