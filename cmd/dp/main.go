@@ -70,19 +70,29 @@ func printUsage() {
 }
 
 func getVersion() string {
-	if version != "" {
-		return version
-	}
+	var revision string
 	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return "unknown"
-	}
-	for _, setting := range info.Settings {
-		if setting.Key == "vcs.revision" {
-			return setting.Value
+	if ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				revision = setting.Value
+				break
+			}
 		}
 	}
-	return "unknown"
+
+	if version == "" {
+		if revision == "" {
+			return "unknown"
+		}
+		return revision
+	}
+
+	if revision == "" || revision == version {
+		return version
+	}
+
+	return fmt.Sprintf("%s (%s)", version, revision)
 }
 
 func runShow(ctx context.Context) error {
