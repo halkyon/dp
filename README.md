@@ -4,7 +4,7 @@ CLI tool for interacting with DataPacket's GraphQL API to list and SSH into serv
 
 ## Requirements
 
-- Go 1.25+
+- Go 1.25+ (if building from source)
 - DataPacket readonly API key (generate this at https://app.datapacket.com/settings/security)
 
 ## Installation
