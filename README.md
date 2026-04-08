@@ -9,6 +9,8 @@ CLI tool for interacting with DataPacket's GraphQL API to list and SSH into serv
 
 ## Building
 
+Download a pre-built binary from [releases](https://github.com/halkyon/dp-cli/releases) or build from source:
+
 ```bash
 make build
 ```
