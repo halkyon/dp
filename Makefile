@@ -5,12 +5,10 @@ GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 GIT_TAG := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "")
 
 ifeq ($(GIT_TAG),)
-	VERSION := $(GIT_SHA)
+	LDFLAGS := -s -w
 else
-	VERSION := $(GIT_TAG)
+	LDFLAGS := -s -w -X=main.version=$(GIT_TAG)
 endif
-
-LDFLAGS := -s -w -X=main.version=$(VERSION)
 
 clean:
 	rm -rf releases

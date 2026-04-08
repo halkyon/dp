@@ -70,7 +70,8 @@ func printUsage() {
 }
 
 func getVersion() string {
-	var revision string
+	revision := "unknown"
+
 	info, ok := debug.ReadBuildInfo()
 	if ok {
 		for _, setting := range info.Settings {
@@ -82,13 +83,10 @@ func getVersion() string {
 	}
 
 	if version == "" {
-		if revision == "" {
-			return "unknown"
-		}
 		return revision
 	}
 
-	if revision == "" || revision == version {
+	if revision == version {
 		return version
 	}
 
