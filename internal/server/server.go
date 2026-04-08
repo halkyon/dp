@@ -29,6 +29,7 @@ type Server struct {
 	Memory          string   `json:"memory,omitempty"`
 	Storage         string   `json:"storage,omitempty"`
 	Uplink          string   `json:"uplink,omitempty"`
+	RAID            string   `json:"raid,omitempty"`
 	TrafficPlan     string   `json:"trafficPlan,omitempty"`
 	IPMIURL         string   `json:"ipmiUrl,omitempty"`
 	IPMIUser        string   `json:"ipmiUser,omitempty"`
@@ -156,6 +157,7 @@ type subscriptionItemDetail struct {
 
 type systemInfo struct {
 	OperatingSystem operatingSystemInfo `json:"operatingSystem"`
+	Raid            string              `json:"raid"`
 }
 
 type hardwareInfo struct {
@@ -211,6 +213,7 @@ const serversQuery = `query($input: PaginatedServersInput) {
 				operatingSystem {
 					name
 				}
+				raid
 			}
 			hardware {
 				cpus {
@@ -380,6 +383,7 @@ func convertServers(allServers []serverNode) []Server {
 			Memory:          memory,
 			Storage:         storage,
 			Uplink:          uplink,
+			RAID:            srv.System.Raid,
 			TrafficPlan:     trafficPlan,
 			IPMIURL:         ipmiURL,
 			IPMIUser:        srv.Network.IPMI.Username,
