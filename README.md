@@ -40,8 +40,6 @@ dp show
 dp show "dp-prod-edge-mia-.+"
 ```
 
-Output includes: name, alias, IP address, price, currency, status, power status, and operating system.
-
 ### ssh - SSH to server
 
 ```bash
