@@ -9,13 +9,14 @@ import (
 )
 
 type Server struct {
-	Name        string  `json:"name"`
-	Alias       string  `json:"alias,omitempty"`
-	IP          string  `json:"ip,omitempty"`
-	Price       float64 `json:"price,omitempty"`
-	Currency    string  `json:"currency,omitempty"`
-	Status      string  `json:"status"`
-	PowerStatus string  `json:"powerStatus,omitempty"`
+	Name            string  `json:"name"`
+	Alias           string  `json:"alias,omitempty"`
+	IP              string  `json:"ip,omitempty"`
+	Price           float64 `json:"price,omitempty"`
+	Currency        string  `json:"currency,omitempty"`
+	Status          string  `json:"status"`
+	PowerStatus     string  `json:"powerStatus,omitempty"`
+	OperatingSystem string  `json:"operatingSystem,omitempty"`
 }
 
 type Options struct {
@@ -73,6 +74,7 @@ type serverNode struct {
 	PowerStatus string      `json:"powerStatus"`
 	Network     networkInfo `json:"network"`
 	Billing     billingInfo `json:"billing"`
+	System      systemInfo  `json:"system"`
 }
 
 type networkInfo struct {
@@ -91,6 +93,14 @@ type billingInfo struct {
 type subscriptionItem struct {
 	Price    float64 `json:"price"`
 	Currency string  `json:"currency"`
+}
+
+type systemInfo struct {
+	OperatingSystem operatingSystemInfo `json:"operatingSystem"`
+}
+
+type operatingSystemInfo struct {
+	Name string `json:"name"`
 }
 
 type serversData struct {
@@ -113,6 +123,11 @@ const serversQuery = `query($input: PaginatedServersInput) {
 			uptime
 			statusV2
 			powerStatus
+			system {
+				operatingSystem {
+					name
+				}
+			}
 			network {
 				ipAddresses {
 					ip
@@ -151,13 +166,14 @@ func convertServers(allServers []serverNode) []Server {
 		ip := extractPrimaryIP(srv.Network.IPAddresses)
 
 		servers[i] = Server{
-			Name:        srv.Name,
-			Alias:       srv.Alias,
-			IP:          ip,
-			Price:       srv.Billing.SubscriptionItem.Price,
-			Currency:    srv.Billing.SubscriptionItem.Currency,
-			Status:      srv.StatusV2,
-			PowerStatus: srv.PowerStatus,
+			Name:            srv.Name,
+			Alias:           srv.Alias,
+			IP:              ip,
+			Price:           srv.Billing.SubscriptionItem.Price,
+			Currency:        srv.Billing.SubscriptionItem.Currency,
+			Status:          srv.StatusV2,
+			PowerStatus:     srv.PowerStatus,
+			OperatingSystem: srv.System.OperatingSystem.Name,
 		}
 	}
 
