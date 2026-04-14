@@ -40,22 +40,67 @@ type Server struct {
 }
 
 type Options struct {
-	Filter string
+	Filter   string
+	Name     []string
+	Alias    []string
+	Location []string
+	Region   []string
+	Status   []string
+	Power    []string
+	Tag      []string
 }
 
-func FetchAll(ctx context.Context, client *api.Client) ([]Server, error) {
+func FetchAll(ctx context.Context, client *api.Client, opts Options) ([]Server, error) {
 	var allServers []serverNode
 
 	pageIndex := 0
 	pageSize := 50
 
+	input := map[string]any{
+		"pageIndex": pageIndex,
+		"pageSize":  pageSize,
+	}
+
+	if len(opts.Name) > 0 || len(opts.Alias) > 0 || len(opts.Location) > 0 || len(opts.Region) > 0 ||
+		len(opts.Status) > 0 || len(opts.Power) > 0 || len(opts.Tag) > 0 {
+		filter := make(map[string]any)
+		if len(opts.Name) > 0 {
+			filter["name_in"] = opts.Name
+		}
+		if len(opts.Alias) > 0 {
+			filter["alias_in"] = opts.Alias
+		}
+		if len(opts.Location) > 0 {
+			filter["location_in"] = opts.Location
+		}
+		if len(opts.Region) > 0 {
+			filter["region_in"] = opts.Region
+		}
+		if len(opts.Status) > 0 {
+			filter["serverStatusV2_in"] = opts.Status
+		}
+		if len(opts.Power) > 0 {
+			filter["powerStatus_in"] = opts.Power
+		}
+		if len(opts.Tag) > 0 {
+			var tags []map[string]string
+			for _, t := range opts.Tag {
+				parts := strings.SplitN(t, "=", 2)
+				if len(parts) == 2 {
+					tags = append(tags, map[string]string{"key": parts[0], "value": parts[1]})
+				}
+			}
+			if len(tags) > 0 {
+				filter["tags_in"] = tags
+			}
+		}
+		input["filter"] = filter
+	}
+
 	for {
 		var data serversData
 		if err := client.Query(ctx, serversQuery, map[string]any{
-			"input": map[string]any{
-				"pageIndex": pageIndex,
-				"pageSize":  pageSize,
-			},
+			"input": input,
 		}, &data); err != nil {
 			return nil, err
 		}
@@ -67,6 +112,7 @@ func FetchAll(ctx context.Context, client *api.Client) ([]Server, error) {
 		}
 
 		pageIndex++
+		input["pageIndex"] = pageIndex
 	}
 
 	servers := convertServers(allServers)

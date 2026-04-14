@@ -19,6 +19,7 @@ import (
 var version = ""
 var verbose = false
 var sshUser = ""
+var serverOpts server.Options
 
 func main() {
 	if len(os.Args) < 2 {
@@ -47,6 +48,62 @@ func parseFlags() {
 				os.Exit(1)
 			}
 			sshUser = os.Args[i+1]
+			os.Args = append(os.Args[:i], os.Args[i+2:]...)
+			i--
+		case "--name", "-n":
+			if i+1 >= len(os.Args) {
+				fmt.Fprintln(os.Stderr, "error: --name requires a value")
+				os.Exit(1)
+			}
+			serverOpts.Name = append(serverOpts.Name, os.Args[i+1])
+			os.Args = append(os.Args[:i], os.Args[i+2:]...)
+			i--
+		case "--alias", "-a":
+			if i+1 >= len(os.Args) {
+				fmt.Fprintln(os.Stderr, "error: --alias requires a value")
+				os.Exit(1)
+			}
+			serverOpts.Alias = append(serverOpts.Alias, os.Args[i+1])
+			os.Args = append(os.Args[:i], os.Args[i+2:]...)
+			i--
+		case "--location", "-l":
+			if i+1 >= len(os.Args) {
+				fmt.Fprintln(os.Stderr, "error: --location requires a value")
+				os.Exit(1)
+			}
+			serverOpts.Location = append(serverOpts.Location, os.Args[i+1])
+			os.Args = append(os.Args[:i], os.Args[i+2:]...)
+			i--
+		case "--region", "-r":
+			if i+1 >= len(os.Args) {
+				fmt.Fprintln(os.Stderr, "error: --region requires a value")
+				os.Exit(1)
+			}
+			serverOpts.Region = append(serverOpts.Region, os.Args[i+1])
+			os.Args = append(os.Args[:i], os.Args[i+2:]...)
+			i--
+		case "--status":
+			if i+1 >= len(os.Args) {
+				fmt.Fprintln(os.Stderr, "error: --status requires a value")
+				os.Exit(1)
+			}
+			serverOpts.Status = append(serverOpts.Status, os.Args[i+1])
+			os.Args = append(os.Args[:i], os.Args[i+2:]...)
+			i--
+		case "--power":
+			if i+1 >= len(os.Args) {
+				fmt.Fprintln(os.Stderr, "error: --power requires a value")
+				os.Exit(1)
+			}
+			serverOpts.Power = append(serverOpts.Power, os.Args[i+1])
+			os.Args = append(os.Args[:i], os.Args[i+2:]...)
+			i--
+		case "--tag", "-t":
+			if i+1 >= len(os.Args) {
+				fmt.Fprintln(os.Stderr, "error: --tag requires a value")
+				os.Exit(1)
+			}
+			serverOpts.Tag = append(serverOpts.Tag, os.Args[i+1])
 			os.Args = append(os.Args[:i], os.Args[i+2:]...)
 			i--
 		case "--help", "-h":
@@ -88,6 +145,14 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "Options:\n")
 	fmt.Fprintf(os.Stderr, "  -v, --verbose      Print verbose information\n")
 	fmt.Fprintf(os.Stderr, "  -u, --user <user>  SSH user (for ssh command)\n")
+	fmt.Fprintf(os.Stderr, "Global filter options (for show, ssh, aliases):\n")
+	fmt.Fprintf(os.Stderr, "  -n, --name <name>        Filter by name (repeatable)\n")
+	fmt.Fprintf(os.Stderr, "  -a, --alias <alias>     Filter by alias (repeatable)\n")
+	fmt.Fprintf(os.Stderr, "  -l, --location <loc>    Filter by location (repeatable)\n")
+	fmt.Fprintf(os.Stderr, "  -r, --region <region>   Filter by region (repeatable)\n")
+	fmt.Fprintf(os.Stderr, "  --status <status>       Filter by status (repeatable)\n")
+	fmt.Fprintf(os.Stderr, "  --power <power>         Filter by power status (repeatable)\n")
+	fmt.Fprintf(os.Stderr, "  -t, --tag <key=value>    Filter by tag (repeatable)\n")
 	fmt.Fprintf(os.Stderr, "Commands:\n")
 	fmt.Fprintf(os.Stderr, "  show [regex]       List servers (optional regex filter)\n")
 	fmt.Fprintf(os.Stderr, "  ssh <alias>        SSH to server (alias or user@alias) [ssh flags...]\n")
@@ -121,7 +186,7 @@ func getVersion() string {
 }
 
 func runShow(ctx context.Context) error {
-	var opts server.Options
+	opts := serverOpts
 
 	for i := 2; i < len(os.Args); i++ {
 		if !strings.HasPrefix(os.Args[i], "-") {
@@ -142,7 +207,7 @@ func runShow(ctx context.Context) error {
 		return err
 	}
 
-	servers, err := server.FetchAll(ctx, client)
+	servers, err := server.FetchAll(ctx, client, opts)
 	if err != nil {
 		return err
 	}
@@ -160,7 +225,7 @@ func runShow(ctx context.Context) error {
 }
 
 func runSSH(ctx context.Context, args []string) error {
-	servers, err := server.FetchAll(ctx, getClient())
+	servers, err := server.FetchAll(ctx, getClient(), serverOpts)
 	if err != nil {
 		return err
 	}

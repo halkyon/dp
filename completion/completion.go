@@ -79,18 +79,11 @@ _dp() {
 
     if [[ $cword -eq 1 ]]; then
         COMPREPLY=($(compgen -W "show ssh completion aliases" -- "$cur"))
-    elif [[ $cword -eq 2 ]]; then
-        case "${words[1]}" in
-            ssh|show)
-                local -a aliases
-                if aliases=($(` + name + ` aliases 2>/dev/null)); then
-                    COMPREPLY=($(compgen -W "${aliases[*]}" -- "$cur"))
-                fi
-                ;;
-            completion)
-                COMPREPLY=($(compgen -W "bash zsh fish" -- "$cur"))
-                ;;
-        esac
+    else
+        local -a aliases
+        if aliases=($(` + name + ` aliases 2>/dev/null)); then
+            COMPREPLY=($(compgen -W "${aliases[*]}" -- "$cur"))
+        fi
     fi
 }
 
@@ -111,17 +104,10 @@ _dp() {
 
     if (( CURRENT == 2 )); then
         _describe "command" commands
-    elif (( CURRENT == 3 )); then
-        case "${words[2]}" in
-            ssh|show)
-                local -a aliases
-                aliases=($(` + name + ` aliases 2>/dev/null))
-                _describe "alias" aliases
-                ;;
-            completion)
-                _describe "shell" "bash bash completion" "zsh zsh completion" "fish fish completion"
-                ;;
-        esac
+    else
+        local -a aliases
+        aliases=($(` + name + ` aliases 2>/dev/null))
+        _describe "alias" aliases
     fi
 }
 
@@ -139,16 +125,6 @@ function __fish_dp_needs_command
     return 1
 end
 
-function __fish_dp_using_command
-    set -l cmd (commandline -opc)
-    if test (count $cmd) -gt 1
-        if test "$cmd[2]" = "$argv[1]"
-            return 0
-        end
-    end
-    return 1
-end
-
 function __fish_dp_get_aliases
     ` + name + ` aliases 2>/dev/null
 end
@@ -159,7 +135,6 @@ complete -c ` + name + ` -a 'ssh' -d 'SSH to server by alias'
 complete -c ` + name + ` -a 'completion' -d 'Generate completion script'
 complete -c ` + name + ` -a 'aliases' -d 'List all server aliases'
 
-complete -c ` + name + ` -f -n '__fish_dp_using_command show' -a '(__fish_dp_get_aliases)'
-complete -c ` + name + ` -f -n '__fish_dp_using_command ssh' -a '(__fish_dp_get_aliases)'
+complete -c ` + name + ` -f -a '(__fish_dp_get_aliases)'
 `
 }

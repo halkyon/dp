@@ -28,7 +28,7 @@ func (a *AliasCache) Get(ctx context.Context) ([]string, error) {
 		return aliases, nil
 	}
 
-	servers, err := server.FetchAll(ctx, a.client)
+	servers, err := server.FetchAll(ctx, a.client, server.Options{})
 	if err != nil {
 		return nil, err
 	}
