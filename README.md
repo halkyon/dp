@@ -30,30 +30,61 @@ api_key = your-api-key
 
 ## Commands
 
-### show - Show server info
+### show - List servers
 
 ```bash
 # List all servers (sorted by price)
 dp show
 
-# Filter by regex (matches name or alias)
-dp show "dp-prod-edge-mia-.+"
+# Filter by name (repeatable)
+dp show --name DP-12345 --name DP-67890
+
+# Filter by alias (repeatable)
+dp show --alias my-server --alias prod-server
+
+# Filter by location (repeatable)
+dp show --location Amsterdam --location Berlin
+
+# Filter by region (repeatable)
+dp show --region EU --region NA
+
+# Filter by status (repeatable)
+dp show --status ACTIVE --status MAINTENANCE
+
+# Filter by power status (repeatable)
+dp show --power ON
+
+# Filter by tag (repeatable)
+dp show --tag env=prod --tag team=backend
+
+# Fuzzy filter using jq
+dp show | jq '[.[] | select(.alias) | select(.alias | test("dp-prod-edge-fra01-[0-9]"))]'
 ```
 
 ### ssh - SSH to server
 
 ```bash
-# SSH using ubuntu user (default)
-dp ssh "dp-prod-edge-mia1-11"
+# SSH using default user (based on OS)
+dp ssh my-server
 
 # SSH as different user
-dp ssh "root@dp-prod-edge-mia1-11"
+dp ssh root@my-server
+
+# SSH with verbose output
+dp -v ssh my-server
 ```
 
 ### aliases - List all server aliases
 
 ```bash
 dp aliases
+```
+
+## Global Options
+
+```bash
+-v, --verbose      Print verbose information
+-u, --user <user>  SSH user (for ssh command)
 ```
 
 ## Shell completion setup
@@ -109,7 +140,7 @@ func main() {
         log.Fatal(err)
     }
 
-    servers, err := server.FetchAll(ctx, client)
+    servers, err := server.List(ctx, client)
     if err != nil {
         log.Fatal(err)
     }
@@ -120,12 +151,18 @@ func main() {
 }
 ```
 
-### Filter servers
+### List with filters
 
 ```go
-import "github.com/halkyon/dp/server"
-
-servers := server.Filter(servers, server.Options{Filter: "prod-.*"})
+servers, err := server.List(ctx, client,
+    server.WithName("DP-12345", "DP-67890"),
+    server.WithAlias("my-server", "prod-server"),
+    server.WithLocation("Amsterdam", "Berlin"),
+    server.WithRegion("EU", "NA"),
+    server.WithStatus("ACTIVE", "MAINTENANCE"),
+    server.WithPower("ON"),
+    server.WithTag("env=prod", "team=backend"),
+)
 ```
 
 ### Cached aliases

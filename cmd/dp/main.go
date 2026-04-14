@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
-	"strings"
 
 	"github.com/halkyon/dp/api"
 	"github.com/halkyon/dp/completion"
@@ -151,11 +150,11 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  -l, --location <loc>    Filter by location (repeatable)\n")
 	fmt.Fprintf(os.Stderr, "  -r, --region <region>   Filter by region (repeatable)\n")
 	fmt.Fprintf(os.Stderr, "  --status <status>       Filter by status (repeatable)\n")
-	fmt.Fprintf(os.Stderr, "  --power <power>         Filter by power status (repeatable)\n")
-	fmt.Fprintf(os.Stderr, "  -t, --tag <key=value>    Filter by tag (repeatable)\n")
+	fmt.Fprintf(os.Stderr, "  --power <power>        Filter by power status (repeatable)\n")
+	fmt.Fprintf(os.Stderr, "  -t, --tag <key=value>   Filter by tag (repeatable)\n")
 	fmt.Fprintf(os.Stderr, "Commands:\n")
-	fmt.Fprintf(os.Stderr, "  show [regex]       List servers (optional regex filter)\n")
-	fmt.Fprintf(os.Stderr, "  ssh <alias>        SSH to server (alias or user@alias) [ssh flags...]\n")
+	fmt.Fprintf(os.Stderr, "  show                 List servers\n")
+	fmt.Fprintf(os.Stderr, "  ssh <alias>          SSH to server (alias or user@alias) [ssh flags...]\n")
 	fmt.Fprintf(os.Stderr, "  completion <shell> Generate completion script (bash|zsh|fish)\n")
 	fmt.Fprintf(os.Stderr, "  aliases            List all server aliases (for completion)\n")
 	fmt.Fprintf(os.Stderr, "  version            Print version\n")
@@ -186,14 +185,6 @@ func getVersion() string {
 }
 
 func runShow(ctx context.Context) error {
-	opts := serverOpts
-
-	for i := 2; i < len(os.Args); i++ {
-		if !strings.HasPrefix(os.Args[i], "-") {
-			opts.Filter = os.Args[i]
-		}
-	}
-
 	apiKey, err := config.GetAPIKey()
 	if err != nil {
 		return err
@@ -207,12 +198,10 @@ func runShow(ctx context.Context) error {
 		return err
 	}
 
-	servers, err := server.FetchAll(ctx, client, opts)
+	servers, err := server.List(ctx, client, serverOpts.ToOpts()...)
 	if err != nil {
 		return err
 	}
-
-	servers = server.Filter(servers, opts)
 
 	output, err := json.MarshalIndent(servers, "", "  ")
 	if err != nil {
@@ -225,7 +214,7 @@ func runShow(ctx context.Context) error {
 }
 
 func runSSH(ctx context.Context, args []string) error {
-	servers, err := server.FetchAll(ctx, getClient(), serverOpts)
+	servers, err := server.List(ctx, getClient(), serverOpts.ToOpts()...)
 	if err != nil {
 		return err
 	}

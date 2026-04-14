@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -40,7 +39,6 @@ type Server struct {
 }
 
 type Options struct {
-	Filter   string
 	Name     []string
 	Alias    []string
 	Location []string
@@ -50,8 +48,83 @@ type Options struct {
 	Tag      []string
 }
 
-func FetchAll(ctx context.Context, client *api.Client, opts Options) ([]Server, error) {
-	var allServers []serverNode
+type Option func(*Options)
+
+func WithName(names ...string) Option {
+	return func(o *Options) {
+		o.Name = append(o.Name, names...)
+	}
+}
+
+func WithAlias(aliases ...string) Option {
+	return func(o *Options) {
+		o.Alias = append(o.Alias, aliases...)
+	}
+}
+
+func WithLocation(locs ...string) Option {
+	return func(o *Options) {
+		o.Location = append(o.Location, locs...)
+	}
+}
+
+func WithRegion(regions ...string) Option {
+	return func(o *Options) {
+		o.Region = append(o.Region, regions...)
+	}
+}
+
+func WithStatus(statuses ...string) Option {
+	return func(o *Options) {
+		o.Status = append(o.Status, statuses...)
+	}
+}
+
+func WithPower(powers ...string) Option {
+	return func(o *Options) {
+		o.Power = append(o.Power, powers...)
+	}
+}
+
+func WithTag(tags ...string) Option {
+	return func(o *Options) {
+		o.Tag = append(o.Tag, tags...)
+	}
+}
+
+func (o Options) ToOpts() []Option {
+	var opts []Option
+	if len(o.Name) > 0 {
+		opts = append(opts, WithName(o.Name...))
+	}
+	if len(o.Alias) > 0 {
+		opts = append(opts, WithAlias(o.Alias...))
+	}
+	if len(o.Location) > 0 {
+		opts = append(opts, WithLocation(o.Location...))
+	}
+	if len(o.Region) > 0 {
+		opts = append(opts, WithRegion(o.Region...))
+	}
+	if len(o.Status) > 0 {
+		opts = append(opts, WithStatus(o.Status...))
+	}
+	if len(o.Power) > 0 {
+		opts = append(opts, WithPower(o.Power...))
+	}
+	if len(o.Tag) > 0 {
+		opts = append(opts, WithTag(o.Tag...))
+	}
+	return opts
+}
+
+func List(ctx context.Context, client *api.Client, opts ...Option) ([]Server, error) {
+	var options Options
+	for _, o := range opts {
+		o(&options)
+	}
+
+	var result []serverNode
 
 	pageIndex := 0
 	pageSize := 50
@@ -61,30 +134,30 @@ func FetchAll(ctx context.Context, client *api.Client, opts Options) ([]Server, 
 		"pageSize":  pageSize,
 	}
 
-	if len(opts.Name) > 0 || len(opts.Alias) > 0 || len(opts.Location) > 0 || len(opts.Region) > 0 ||
-		len(opts.Status) > 0 || len(opts.Power) > 0 || len(opts.Tag) > 0 {
+	if len(options.Name) > 0 || len(options.Alias) > 0 || len(options.Location) > 0 || len(options.Region) > 0 ||
+		len(options.Status) > 0 || len(options.Power) > 0 || len(options.Tag) > 0 {
 		filter := make(map[string]any)
-		if len(opts.Name) > 0 {
-			filter["name_in"] = opts.Name
+		if len(options.Name) > 0 {
+			filter["name_in"] = options.Name
 		}
-		if len(opts.Alias) > 0 {
-			filter["alias_in"] = opts.Alias
+		if len(options.Alias) > 0 {
+			filter["alias_in"] = options.Alias
 		}
-		if len(opts.Location) > 0 {
-			filter["location_in"] = opts.Location
+		if len(options.Location) > 0 {
+			filter["location_in"] = options.Location
 		}
-		if len(opts.Region) > 0 {
-			filter["region_in"] = opts.Region
+		if len(options.Region) > 0 {
+			filter["region_in"] = options.Region
 		}
-		if len(opts.Status) > 0 {
-			filter["serverStatusV2_in"] = opts.Status
+		if len(options.Status) > 0 {
+			filter["serverStatusV2_in"] = options.Status
 		}
-		if len(opts.Power) > 0 {
-			filter["powerStatus_in"] = opts.Power
+		if len(options.Power) > 0 {
+			filter["powerStatus_in"] = options.Power
 		}
-		if len(opts.Tag) > 0 {
+		if len(options.Tag) > 0 {
 			var tags []map[string]string
-			for _, t := range opts.Tag {
+			for _, t := range options.Tag {
 				parts := strings.SplitN(t, "=", 2)
 				if len(parts) == 2 {
 					tags = append(tags, map[string]string{"key": parts[0], "value": parts[1]})
@@ -105,7 +178,7 @@ func FetchAll(ctx context.Context, client *api.Client, opts Options) ([]Server, 
 			return nil, err
 		}
 
-		allServers = append(allServers, data.Servers.Entries...)
+		result = append(result, data.Servers.Entries...)
 
 		if data.Servers.IsLastPage {
 			break
@@ -115,21 +188,13 @@ func FetchAll(ctx context.Context, client *api.Client, opts Options) ([]Server, 
 		input["pageIndex"] = pageIndex
 	}
 
-	servers := convertServers(allServers)
+	servers := convertServers(result)
 
 	sort.Slice(servers, func(i, j int) bool {
 		return servers[i].Price > servers[j].Price
 	})
 
 	return servers, nil
-}
-
-func Filter(servers []Server, opts Options) []Server {
-	if opts.Filter != "" {
-		servers = filterResults(servers, opts.Filter)
-	}
-
-	return servers
 }
 
 type serverNode struct {
@@ -310,25 +375,10 @@ const serversQuery = `query($input: PaginatedServersInput) {
 	}
 }`
 
-func filterResults(servers []Server, filterArg string) []Server {
-	nameRegex := regexp.MustCompile("(?i)" + filterArg)
-	aliasRegex := regexp.MustCompile("(?i)" + filterArg)
+func convertServers(items []serverNode) []Server {
+	servers := make([]Server, len(items))
 
-	filtered := make([]Server, 0, len(servers))
-
-	for _, srv := range servers {
-		if nameRegex.MatchString(srv.Name) || (srv.Alias != "" && aliasRegex.MatchString(srv.Alias)) {
-			filtered = append(filtered, srv)
-		}
-	}
-
-	return filtered
-}
-
-func convertServers(allServers []serverNode) []Server {
-	servers := make([]Server, len(allServers))
-
-	for i, srv := range allServers {
+	for i, srv := range items {
 		ip, ipType, additionalIPs := extractIPsWithType(srv.Network.IPAddresses)
 
 		var cpu string
