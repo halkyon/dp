@@ -11,6 +11,7 @@ type Config struct {
 	APIKey         string
 	Output         string
 	APIURL         string
+	TestAPI        bool
 	AliasesCache   time.Duration
 	LocationsCache time.Duration
 	RegionsCache   time.Duration
@@ -21,11 +22,19 @@ func getConfigPath() string {
 	if home == "" {
 		return ""
 	}
+	return home + "/.config/dp/config"
+}
+
+func getCredentialsPath() string {
+	home := os.Getenv("HOME")
+	if home == "" {
+		return ""
+	}
 	return home + "/.config/dp/credentials"
 }
 
 func parseDuration(s string) time.Duration {
-	s = s + "s"
+	s += "s"
 	d, err := time.ParseDuration(s)
 	if err == nil {
 		return d
@@ -37,38 +46,47 @@ func Load() (*Config, error) {
 	var cfg Config
 
 	path := getConfigPath()
-	if path == "" {
-		return &cfg, nil
-	}
-
-	data, err := ini.Load(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return &cfg, nil
+	if path != "" {
+		data, err := ini.Load(path)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
 		}
-		return nil, err
+		if data != nil {
+			cfg.Output = data.Section("").Key("output").String()
+			cfg.APIURL = data.Section("").Key("api_url").String()
+			cfg.TestAPI = data.Section("").Key("test_api").MustBool(false)
+
+			if aliases := data.Section("").Key("aliases_cache").String(); aliases != "" {
+				cfg.AliasesCache = parseDuration(aliases)
+			} else {
+				cfg.AliasesCache = time.Hour
+			}
+
+			if locations := data.Section("").Key("locations_cache").String(); locations != "" {
+				cfg.LocationsCache = parseDuration(locations)
+			} else {
+				cfg.LocationsCache = 7 * 24 * time.Hour
+			}
+
+			if regions := data.Section("").Key("regions_cache").String(); regions != "" {
+				cfg.RegionsCache = parseDuration(regions)
+			} else {
+				cfg.RegionsCache = 7 * 24 * time.Hour
+			}
+		}
 	}
 
-	cfg.APIKey = data.Section("").Key("api_key").String()
-	cfg.Output = data.Section("").Key("output").String()
-	cfg.APIURL = data.Section("").Key("api_url").String()
-
-	if aliases := data.Section("").Key("aliases_cache").String(); aliases != "" {
-		cfg.AliasesCache = parseDuration(aliases)
-	} else {
-		cfg.AliasesCache = time.Hour
-	}
-
-	if locations := data.Section("").Key("locations_cache").String(); locations != "" {
-		cfg.LocationsCache = parseDuration(locations)
-	} else {
-		cfg.LocationsCache = 7 * 24 * time.Hour
-	}
-
-	if regions := data.Section("").Key("regions_cache").String(); regions != "" {
-		cfg.RegionsCache = parseDuration(regions)
-	} else {
-		cfg.RegionsCache = 7 * 24 * time.Hour
+	credsPath := getCredentialsPath()
+	if credsPath != "" {
+		credsData, err := ini.Load(credsPath)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+		if credsData != nil {
+			if cfg.APIKey == "" {
+				cfg.APIKey = credsData.Section("").Key("api_key").String()
+			}
+		}
 	}
 
 	return &cfg, nil
@@ -105,6 +123,11 @@ func GetAPIURL() (string, error) {
 		return "", err
 	}
 	return cfg.APIURL, nil
+}
+
+func GetTestAPI() bool {
+	cfg, _ := Load()
+	return cfg.TestAPI
 }
 
 func GetAliasesCache() time.Duration {

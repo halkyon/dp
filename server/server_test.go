@@ -1,78 +1,65 @@
 package server
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/halkyon/dp/api"
+	"github.com/halkyon/dp/testapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestServer_List(t *testing.T) {
-	expectedServers := []serverNode{
-		{
-			Name:        "DP-12345",
-			Alias:       "Prod-Web",
-			Hostname:    "dp-12345.example.com",
-			Uptime:      172800,
-			StatusV2:    "ACTIVE",
-			PowerStatus: "ON",
-			Location:    locationInfo{Name: "Ashburn", Region: "NA"},
-			Network: networkInfo{
-				IPAddresses:    []ipAddress{{IP: "1.2.3.4", Type: "IPV4", IsPrimary: true}},
-				UplinkCapacity: 10,
-			},
-			Billing: billingInfo{
-				SubscriptionItem: subscriptionItem{
-					Price:    99.99,
-					Currency: "USD",
-				},
-			},
-			System: systemInfo{
-				OperatingSystem: operatingSystemInfo{Name: "Ubuntu 22.04"},
-				Raid:            "NONE",
-			},
-			Hardware: hardwareInfo{
-				CPUs:    []cpuInfo{{Name: "Intel Xeon", Cores: 4}},
-				RAMs:    []ramInfo{{Size: 16}},
-				Storage: []storageInfo{{Size: 100, Type: "SSD"}},
-			},
-		},
-	}
+	srv, err := testapi.Start(t.Context())
+	require.NoError(t, err)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp := map[string]any{
-			"data": map[string]any{
-				"servers": map[string]any{
-					"entriesTotalCount": len(expectedServers),
-					"pageCount":         1,
-					"isLastPage":        true,
-					"entries":           expectedServers,
-				},
-			},
-		}
-		assert.NoError(t, json.NewEncoder(w).Encode(resp))
-	}))
-	defer server.Close()
+	url := fmt.Sprintf("http://%s", srv.Addr())
 
 	client, err := api.NewClient("test-key")
 	require.NoError(t, err)
-	client.SetBaseURL(server.URL)
+	client.SetBaseURL(url)
 
 	t.Run("List servers", func(t *testing.T) {
-		servers, err := List(t.Context(), client)
+		servers, err := List(context.Background(), client)
 		assert.NoError(t, err)
-		assert.Len(t, servers, 1)
-		assert.Equal(t, "DP-12345", servers[0].Name)
-		assert.Equal(t, "Prod-Web", servers[0].Alias)
-		assert.Equal(t, "1.2.3.4", servers[0].IP)
-		assert.Equal(t, "Ubuntu 22.04", servers[0].OperatingSystem)
-		assert.Equal(t, "Intel Xeon", servers[0].CPU)
-		assert.Equal(t, "16 GB", servers[0].Memory)
-		assert.Equal(t, "100 GB SSD", servers[0].Storage)
-		assert.Equal(t, 99.99, servers[0].Price)
+		assert.Len(t, servers, 3)
+
+		// Find server by name
+		var server1, server2, server3 Server
+		for _, s := range servers {
+			switch s.Name {
+			case "DP-12345":
+				server1 = s
+			case "DP-67890":
+				server2 = s
+			case "DP-11111":
+				server3 = s
+			}
+		}
+
+		assert.Equal(t, "test-server-1", server1.Alias)
+		assert.Equal(t, "192.168.1.1", server1.IP)
+		assert.Equal(t, "Ubuntu 22.04", server1.OperatingSystem)
+		assert.Equal(t, "Intel Xeon E-2388", server1.CPU)
+		assert.Equal(t, "32 GB", server1.Memory)
+		assert.Equal(t, "512 GB NVMe", server1.Storage)
+		assert.Equal(t, 49.99, server1.Price)
+
+		assert.Equal(t, "test-server-2", server2.Alias)
+		assert.Equal(t, "192.168.2.1", server2.IP)
+		assert.Equal(t, "Debian 11", server2.OperatingSystem)
+		assert.Equal(t, "AMD EPYC 7443", server2.CPU)
+		assert.Equal(t, "64 GB", server2.Memory)
+		assert.Equal(t, 149.99, server2.Price)
+
+		assert.Equal(t, "", server3.Alias)
+		assert.Equal(t, "2001:db8::1", server3.IP)
+		assert.Equal(t, "CentOS 8", server3.OperatingSystem)
+		assert.Equal(t, "Intel Xeon Gold 6330", server3.CPU)
+		assert.Equal(t, "128 GB", server3.Memory)
+		assert.Equal(t, "960 GB NVMe", server3.Storage)
+		assert.Equal(t, 299.99, server3.Price)
 	})
 }

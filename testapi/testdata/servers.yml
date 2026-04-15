@@ -1,0 +1,148 @@
+entries:
+  - name: DP-12345
+    alias: test-server-1
+    hostname: test-server-1
+    uptime: 86400
+    statusV2: ACTIVE
+    powerStatus: ON
+    location:
+      name: Amsterdam
+      region: EU
+    system:
+      operatingSystem:
+        name: Ubuntu 22.04
+      raid: RAID_1
+    hardware:
+      cpus:
+        - name: Intel Xeon E-2388
+          cores: 8
+      storage:
+        - size: 512
+          type: NVMe
+      rams:
+        - size: 32
+    network:
+      ipAddresses:
+        - ip: 192.168.1.1
+          isPrimary: true
+          type: IPV4
+          isBgpPrefix: false
+      uplinkCapacity: 10
+      hasBgp: false
+      hasLinkAggregation: false
+      ddosShieldLevel: VOLUMETRIC
+      ipmi:
+        ip: 10.0.0.1
+        username: admin
+    trafficPlan:
+      name: Standard
+      type: METERED
+      bandwidth: 1.0
+    billing:
+      subscriptionItem:
+        price: 49.99
+        currency: USD
+        subscriptionItemDetail:
+          server:
+            name: DP-12345
+    tags: []
+  - name: DP-67890
+    alias: test-server-2
+    hostname: test-server-2
+    uptime: 172800
+    statusV2: ACTIVE
+    powerStatus: ON
+    location:
+      name: New York
+      region: NA
+    system:
+      operatingSystem:
+        name: Debian 11
+      raid: RAID_0
+    hardware:
+      cpus:
+        - name: AMD EPYC 7443
+          cores: 24
+      storage:
+        - size: 1024
+          type: SATA_SSD
+        - size: 2048
+          type: HDD
+      rams:
+        - size: 64
+    network:
+      ipAddresses:
+        - ip: 192.168.2.1
+          isPrimary: true
+          type: IPV4
+          isBgpPrefix: false
+        - ip: 192.168.2.2
+          isPrimary: false
+          type: IPV4
+          isBgpPrefix: false
+      uplinkCapacity: 25
+      hasBgp: true
+      hasLinkAggregation: true
+      ddosShieldLevel: FULL
+      ipmi:
+        ip: 10.0.0.2
+        username: admin
+    trafficPlan:
+      name: Premium
+      type: P95
+      bandwidth: 5.0
+    billing:
+      subscriptionItem:
+        price: 149.99
+        currency: USD
+        subscriptionItemDetail:
+          server:
+            name: DP-67890
+    tags:
+      - key: env
+        value: production
+  - name: DP-11111
+    alias: ""
+    hostname: test-server-3
+    uptime: 3600
+    statusV2: PROVISIONING
+    powerStatus: OFF
+    location:
+      name: Singapore
+      region: AP
+    system:
+      operatingSystem:
+        name: CentOS 8
+      raid: NONE
+    hardware:
+      cpus:
+        - name: Intel Xeon Gold 6330
+          cores: 28
+      storage:
+        - size: 960
+          type: NVMe
+      rams:
+        - size: 128
+    network:
+      ipAddresses:
+        - ip: 2001:db8::1
+          isPrimary: true
+          type: IPV6
+          isBgpPrefix: true
+      uplinkCapacity: 10
+      hasBgp: false
+      hasLinkAggregation: false
+      ddosShieldLevel: OFF
+      ipmi: {}
+    trafficPlan:
+      name: Unmetered
+      type: PEAK_UNMETERED
+      bandwidth: 10.0
+    billing:
+      subscriptionItem:
+        price: 299.99
+        currency: USD
+        subscriptionItemDetail:
+          server:
+            name: DP-11111
+    tags: []

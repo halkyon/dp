@@ -1,0 +1,180 @@
+package testapi
+
+import (
+	"context"
+	"encoding/json"
+	"io"
+	"log"
+	"net"
+	"net/http"
+
+	"golang.org/x/sync/errgroup"
+)
+
+type Server struct {
+	ln  net.Listener
+	srv *http.Server
+}
+
+func NewServer() (*Server, error) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, err
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", handleGraphQL)
+
+	srv := &http.Server{Addr: ln.Addr().String(), Handler: mux}
+
+	return &Server{ln: ln, srv: srv}, nil
+}
+
+func (s *Server) Addr() string {
+	return s.ln.Addr().String()
+}
+
+func (s *Server) Run(ctx context.Context) error {
+	var g errgroup.Group
+	g.Go(func() error {
+		return s.srv.Serve(s.ln)
+	})
+	g.Go(func() error {
+		<-ctx.Done()
+		return s.srv.Shutdown(context.Background())
+	})
+	return g.Wait()
+}
+
+func handleGraphQL(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		_ = json.NewEncoder(w).Encode(map[string]any{"errors": []map[string]string{{"message": err.Error()}}})
+		return
+	}
+
+	var req struct {
+		Query string `json:"query"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		_ = json.NewEncoder(w).Encode(map[string]any{"errors": []map[string]string{{"message": err.Error()}}})
+		return
+	}
+
+	response := processQuery(req.Query)
+	_ = json.NewEncoder(w).Encode(response)
+}
+
+func processQuery(query string) map[string]any {
+	switch {
+	case contains(query, "servers"):
+		return map[string]any{"data": map[string]any{"servers": ServersResponse()}}
+	case contains(query, "locations"):
+		return map[string]any{"data": map[string]any{"locations": LocationsResponse()}}
+	case contains(query, "regions"):
+		return map[string]any{"data": map[string]any{"locations": LocationsResponse()}}
+	default:
+		return map[string]any{"errors": []map[string]string{{"message": "unknown query"}}}
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsAt(s, substr, 0))
+}
+
+func containsAt(s, substr string, start int) bool {
+	for i := start; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
+func ServersResponse() map[string]any {
+	servers, _, err := loadTestData()
+	if err != nil {
+		return map[string]any{"errors": []map[string]string{{"message": err.Error()}}}
+	}
+
+	entries := make([]map[string]any, len(servers))
+	for i, s := range servers {
+		entries[i] = map[string]any{
+			"name":        s.Name,
+			"alias":       s.Alias,
+			"hostname":    s.Hostname,
+			"uptime":      s.Uptime,
+			"statusV2":    s.StatusV2,
+			"powerStatus": s.PowerStatus,
+			"location": map[string]any{
+				"name":   s.Location.Name,
+				"region": s.Location.Region,
+			},
+			"system": map[string]any{
+				"operatingSystem": map[string]any{"name": s.System.OperatingSystem.Name},
+				"raid":            s.System.Raid,
+			},
+			"hardware": map[string]any{
+				"cpus":    s.Hardware.CPUs,
+				"storage": s.Hardware.Storage,
+				"rams":    s.Hardware.Rams,
+			},
+			"network": map[string]any{
+				"ipAddresses":        s.Network.IPAddresses,
+				"uplinkCapacity":     s.Network.UplinkCapacity,
+				"hasBgp":             s.Network.HasBGP,
+				"hasLinkAggregation": s.Network.HasLinkAggregation,
+				"ddosShieldLevel":    s.Network.DDOSShieldLevel,
+				"ipmi":               s.Network.IPMI,
+			},
+			"trafficPlan": map[string]any{
+				"name": s.TrafficPlan.Name, "type": s.TrafficPlan.Type, "bandwidth": s.TrafficPlan.Bandwidth,
+			},
+			"billing": map[string]any{
+				"subscriptionItem": map[string]any{
+					"price":    s.Billing.SubscriptionItem.Price,
+					"currency": s.Billing.SubscriptionItem.Currency,
+					"subscriptionItemDetail": map[string]any{
+						"server": map[string]any{"name": s.Billing.SubscriptionItem.SubscriptionItemDetail.Server.Name},
+					},
+				},
+			},
+			"tags": s.Tags,
+		}
+	}
+
+	return map[string]any{
+		"entriesTotalCount": len(servers),
+		"pageCount":         1,
+		"isLastPage":        true,
+		"entries":           entries,
+	}
+}
+
+func LocationsResponse() []map[string]any {
+	_, locations, err := loadTestData()
+	if err != nil {
+		return nil
+	}
+
+	result := make([]map[string]any, len(locations))
+	for i, loc := range locations {
+		result[i] = map[string]any{"name": loc.Name, "region": loc.Region}
+	}
+	return result
+}
+
+func Start(ctx context.Context) (*Server, error) {
+	srv, err := NewServer()
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		if err := srv.Run(ctx); err != nil {
+			log.Printf("testapi server error: %v", err)
+		}
+	}()
+	return srv, nil
+}

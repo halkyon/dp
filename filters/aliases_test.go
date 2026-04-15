@@ -2,52 +2,37 @@ package filters
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/halkyon/dp/api"
+	"github.com/halkyon/dp/testapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAliases_Get(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp := map[string]any{
-			"data": map[string]any{
-				"servers": map[string]any{
-					"entriesTotalCount": 3,
-					"pageCount":         1,
-					"isLastPage":        true,
-					"entries": []map[string]any{
-						{"name": "Server1", "alias": "Alias1"},
-						{"name": "Server2", "alias": ""},
-						{"name": "Server3", "alias": "Alias3"},
-					},
-				},
-			},
-		}
-		require.NoError(t, json.NewEncoder(w).Encode(resp))
-	}))
-	defer server.Close()
+	srv, err := testapi.Start(t.Context())
+	require.NoError(t, err)
+
+	url := fmt.Sprintf("http://%s", srv.Addr())
 
 	client, err := api.NewClient("test-key")
 	require.NoError(t, err)
-	client.SetBaseURL(server.URL)
+	client.SetBaseURL(url)
 
 	cache := NewAliases(client, time.Hour)
 
 	t.Run("First call (cache miss)", func(t *testing.T) {
 		aliases, err := cache.Get(context.Background())
 		require.NoError(t, err)
-		assert.Equal(t, []string{"Alias1", "Alias3"}, aliases)
+		assert.ElementsMatch(t, []string{"test-server-1", "test-server-2"}, aliases)
 	})
 
 	t.Run("Second call (cache hit)", func(t *testing.T) {
 		aliases, err := cache.Get(context.Background())
 		require.NoError(t, err)
-		assert.Equal(t, []string{"Alias1", "Alias3"}, aliases)
+		assert.ElementsMatch(t, []string{"test-server-1", "test-server-2"}, aliases)
 	})
 }

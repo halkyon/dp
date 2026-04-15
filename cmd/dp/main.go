@@ -18,6 +18,7 @@ import (
 	"github.com/halkyon/dp/filters"
 	"github.com/halkyon/dp/server"
 	"github.com/halkyon/dp/ssh"
+	"github.com/halkyon/dp/testapi"
 )
 
 var version = ""
@@ -34,6 +35,7 @@ var flagStatus = new(stringSlice)
 var flagPower = new(stringSlice)
 var flagTag = new(stringSlice)
 var flagUser = new(stringSlice)
+var flagTestAPI bool
 
 type stringSlice []string
 
@@ -63,6 +65,7 @@ func init() {
 	flag.Var(flagTag, "tag", "Filter by tag (repeatable)")
 
 	flag.Var(flagUser, "user", "SSH user (for ssh command)")
+	flag.BoolVar(&flagTestAPI, "test-api", false, "Use test API server")
 }
 
 func main() {
@@ -362,26 +365,33 @@ func printCSV(w *csv.Writer, servers []server.Server, wide bool, queryFields []s
 	return ""
 }
 
-func getClient() (*api.Client, error) {
+func getClient(ctx context.Context) (*api.Client, error) {
 	apiKey, err := config.GetAPIKey()
 	if err != nil {
 		return nil, err
 	}
 	if apiKey == "" {
-		return nil, fmt.Errorf("API key not found. Set DATAPACKET_API_KEY or api_key in ~/.config/dp/credentials")
+		apiKey = "test-key"
 	}
 	client, err := api.NewClient(apiKey)
 	if err != nil {
 		return nil, err
 	}
-	if apiURL, err := config.GetAPIURL(); err == nil && apiURL != "" {
+	if flagTestAPI || config.GetTestAPI() {
+		srv, err := testapi.Start(ctx)
+		if err != nil {
+			return nil, err
+		}
+		url := fmt.Sprintf("http://%s", srv.Addr())
+		client.SetBaseURL(url)
+	} else if apiURL, err := config.GetAPIURL(); err == nil && apiURL != "" {
 		client.SetBaseURL(apiURL)
 	}
 	return client, nil
 }
 
 func runShow(ctx context.Context, outputFormat string, outputWide bool, queryFields []string, opts server.Options) error {
-	client, err := getClient()
+	client, err := getClient(ctx)
 	if err != nil {
 		return err
 	}
@@ -429,7 +439,7 @@ func runShow(ctx context.Context, outputFormat string, outputWide bool, queryFie
 }
 
 func runSSH(ctx context.Context, opts server.Options, sshUser string, args []string, verbose bool) error {
-	client, err := getClient()
+	client, err := getClient(ctx)
 	if err != nil {
 		return err
 	}
@@ -443,7 +453,7 @@ func runSSH(ctx context.Context, opts server.Options, sshUser string, args []str
 }
 
 func runFilter(ctx context.Context, filterType string) error {
-	client, err := getClient()
+	client, err := getClient(ctx)
 	if err != nil {
 		return err
 	}
@@ -481,6 +491,5 @@ func runFilter(ctx context.Context, filterType string) error {
 	for _, item := range list {
 		fmt.Println(item)
 	}
-
 	return nil
 }

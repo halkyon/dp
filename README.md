@@ -28,16 +28,42 @@ The output format is loaded in the following order of priority:
 2. `output` in config file
 3. default `json`
 
-Cache durations and API URL can be configured in the config file:
+Config is loaded from two files:
+- `~/.config/dp/config` - output, api_url, test_api, cache durations
+- `~/.config/dp/credentials` - api_key
+
+Example `~/.config/dp/config`:
 
 ```ini
-api_key = your-api-key
 output = table
 api_url = https://api.example.com/graphql
+test_api = true
 aliases_cache = 24h
 locations_cache = 168h
 regions_cache = 168h
 ```
+
+Example `~/.config/dp/credentials`:
+
+```ini
+api_key = your-api-key
+```
+
+```
+dp --test-api show
+```
+
+### test-api - Start mock API server for testing
+
+```bash
+# Start the test API server (listens on a random port)
+dp test-api
+```
+
+The test API provides mock data for development/testing:
+- Servers: 3 test servers (DP-12345, DP-67890, DP-11111)
+- Locations: Amsterdam, New York, Singapore, etc.
+- Aliases: test-server-1, test-server-2
 
 ## Commands
 

@@ -1,0 +1,36 @@
+- name: Amsterdam
+  region: EU
+- name: Ashburn
+  region: NA
+- name: Atlanta
+  region: NA
+- name: Berlin
+  region: EU
+- name: Chicago
+  region: NA
+- name: Dallas
+  region: NA
+- name: Frankfurt
+  region: EU
+- name: Hong Kong
+  region: AP
+- name: London
+  region: EU
+- name: Los Angeles
+  region: NA
+- name: Miami
+  region: NA
+- name: New York
+  region: NA
+- name: Paris
+  region: EU
+- name: Seattle
+  region: NA
+- name: Singapore
+  region: AP
+- name: Sydney
+  region: AP
+- name: Tokyo
+  region: AP
+- name: Toronto
+  region: NA
