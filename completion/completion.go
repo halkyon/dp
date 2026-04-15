@@ -82,7 +82,11 @@ _dp() {
     else
         local -a aliases
         if aliases=($(` + name + ` aliases 2>/dev/null)); then
-            COMPREPLY=($(compgen -W "${aliases[*]}" -- "$cur"))
+            local completion_word="$cur"
+            if [[ "$cur" == *@* ]]; then
+                completion_word="${cur#*@}"
+            fi
+            COMPREPLY=($(compgen -W "${aliases[*]}" -- "$completion_word"))
         fi
     fi
 }
@@ -107,6 +111,11 @@ _dp() {
     else
         local -a aliases
         aliases=($(` + name + ` aliases 2>/dev/null))
+        local cur_word="${words[CURRENT]}"
+        if [[ "$cur_word" == *@* ]]; then
+            cur_word="${cur_word#*@}"
+        fi
+        compstate[word]="$cur_word"
         _describe "alias" aliases
     fi
 }
@@ -129,12 +138,22 @@ function __fish_dp_get_aliases
     ` + name + ` aliases 2>/dev/null
 end
 
+function __fish_dp_complete_alias
+    set -l cmd (commandline -opc)
+    set -l cur (commandline -ct)
+    set -l word_to_complete "$cur"
+    if string match -q '*@*' "$cur"
+        set word_to_complete (string split '@' "$cur")[-1]
+    end
+    __fish_dp_get_aliases | string match "$word_to_complete*"
+end
+
 complete -c ` + name + ` -f -n '__fish_dp_needs_command'
 complete -c ` + name + ` -a 'show' -d 'List servers with optional regex filter'
 complete -c ` + name + ` -a 'ssh' -d 'SSH to server by alias'
 complete -c ` + name + ` -a 'completion' -d 'Generate completion script'
 complete -c ` + name + ` -a 'aliases' -d 'List all server aliases'
 
-complete -c ` + name + ` -f -a '(__fish_dp_get_aliases)'
+complete -c ` + name + ` -f -a '(__fish_dp_complete_alias)'
 `
 }
