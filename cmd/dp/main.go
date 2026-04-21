@@ -164,6 +164,10 @@ func main() {
 }
 
 func run(cmd string, args []string, opts server.Options) error {
+	cfg := new(config.Config)
+	if err := cfg.Load(); err != nil {
+		return err
+	}
 	wide := outputWide || flag.Lookup("output-wide").Value.String() == "true"
 	verbose := flag.Lookup("verbose").Value.String() == "true"
 	sshUser := ""
@@ -172,8 +176,8 @@ func run(cmd string, args []string, opts server.Options) error {
 	}
 
 	output := "json"
-	if configOutput, err := config.GetOutput(); err == nil && configOutput != "" {
-		output = configOutput
+	if cfg.Output != "" {
+		output = cfg.Output
 	}
 	if outputFormatFlag != "" {
 		output = outputFormatFlag
@@ -184,7 +188,7 @@ func run(cmd string, args []string, opts server.Options) error {
 
 	switch cmd {
 	case "servers":
-		return runShow(ctx, output, wide, *queryFields, opts)
+		return runShow(ctx, output, wide, *queryFields, opts, cfg)
 	case "ssh":
 		var sshArgs []string
 		for _, arg := range args {
@@ -196,22 +200,22 @@ func run(cmd string, args []string, opts server.Options) error {
 		if len(sshArgs) < 1 {
 			return errors.New("usage: dp ssh <alias> [ssh flags...]")
 		}
-		return runSSH(ctx, opts, sshUser, sshArgs, verbose)
+		return runSSH(ctx, opts, sshUser, sshArgs, verbose, cfg)
 	case "completion":
 		if len(args) < 1 {
 			return errors.New("usage: dp completion <bash|zsh|fish>")
 		}
 		return completion.Generate(completion.Shell(args[0]))
 	case "aliases":
-		return runFilter(ctx, "aliases")
+		return runFilter(ctx, "aliases", cfg)
 	case "locations":
-		return runFilter(ctx, "locations")
+		return runFilter(ctx, "locations", cfg)
 	case "regions":
-		return runFilter(ctx, "regions")
+		return runFilter(ctx, "regions", cfg)
 	case "power":
-		return runFilter(ctx, "power")
+		return runFilter(ctx, "power", cfg)
 	case "status":
-		return runFilter(ctx, "status")
+		return runFilter(ctx, "status", cfg)
 	case "version", "-V", "--version":
 		fmt.Println(getVersion())
 		return nil
@@ -426,10 +430,10 @@ func printCSV(w *csv.Writer, servers []server.Server, wide bool, queryFields []s
 	return ""
 }
 
-func getClient(ctx context.Context) (*api.Client, error) {
-	apiKey, err := config.GetAPIKey()
-	if err != nil {
-		return nil, err
+func getClient(ctx context.Context, cfg *config.Config) (*api.Client, error) {
+	apiKey := os.Getenv("DATAPACKET_API_KEY")
+	if apiKey == "" {
+		apiKey = cfg.APIKey
 	}
 	if apiKey == "" {
 		apiKey = "test-key"
@@ -438,7 +442,7 @@ func getClient(ctx context.Context) (*api.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	if flagTestAPI || config.GetTestAPI() {
+	if flagTestAPI || cfg.TestAPI {
 		srv, err := testapi.NewServer()
 		if err != nil {
 			return nil, err
@@ -448,14 +452,14 @@ func getClient(ctx context.Context) (*api.Client, error) {
 		}()
 		url := "http://" + srv.Addr()
 		client.SetBaseURL(url)
-	} else if apiURL, err := config.GetAPIURL(); err == nil && apiURL != "" {
-		client.SetBaseURL(apiURL)
+	} else if cfg.APIURL != "" {
+		client.SetBaseURL(cfg.APIURL)
 	}
 	return client, nil
 }
 
-func runShow(ctx context.Context, outputFormat string, outputWide bool, queryFields []string, opts server.Options) error {
-	client, err := getClient(ctx)
+func runShow(ctx context.Context, outputFormat string, outputWide bool, queryFields []string, opts server.Options, cfg *config.Config) error {
+	client, err := getClient(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -502,8 +506,8 @@ func runShow(ctx context.Context, outputFormat string, outputWide bool, queryFie
 	return nil
 }
 
-func runSSH(ctx context.Context, opts server.Options, sshUser string, args []string, verbose bool) error {
-	client, err := getClient(ctx)
+func runSSH(ctx context.Context, opts server.Options, sshUser string, args []string, verbose bool, cfg *config.Config) error {
+	client, err := getClient(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -516,8 +520,8 @@ func runSSH(ctx context.Context, opts server.Options, sshUser string, args []str
 	return ssh.Run(ctx, servers, sshUser, args, verbose)
 }
 
-func runFilter(ctx context.Context, filterType string) error {
-	client, err := getClient(ctx)
+func runFilter(ctx context.Context, filterType string, cfg *config.Config) error {
+	client, err := getClient(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -528,19 +532,19 @@ func runFilter(ctx context.Context, filterType string) error {
 
 	switch filterType {
 	case "aliases":
-		cache, err := filters.NewAliases(client, config.GetAliasesCache(), "")
+		cache, err := filters.NewAliases(client, cfg.AliasesCache, "")
 		if err != nil {
 			return err
 		}
 		filter = cache
 	case "locations":
-		cache, err := filters.NewLocations(client, config.GetLocationsCache(), "")
+		cache, err := filters.NewLocations(client, cfg.LocationsCache, "")
 		if err != nil {
 			return err
 		}
 		filter = cache
 	case "regions":
-		cache, err := filters.NewRegions(client, config.GetRegionsCache(), "")
+		cache, err := filters.NewRegions(client, cfg.RegionsCache, "")
 		if err != nil {
 			return err
 		}

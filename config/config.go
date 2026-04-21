@@ -1,13 +1,21 @@
 package config
 
 import (
+	"bufio"
 	"os"
+	"strings"
 	"time"
+)
 
-	"gopkg.in/ini.v1"
+const (
+	defaultConfigDir      = "/.config/dp"
+	defaultAliasesCache   = 1 * time.Hour
+	defaultLocationsCache = 7 * 24 * time.Hour
+	defaultRegionsCache   = 7 * 24 * time.Hour
 )
 
 type Config struct {
+	configDir      string
 	APIKey         string
 	Output         string
 	APIURL         string
@@ -17,139 +25,104 @@ type Config struct {
 	RegionsCache   time.Duration
 }
 
-func getConfigPath() string {
-	home := os.Getenv("HOME")
-	if home == "" {
-		return ""
-	}
-	return home + "/.config/dp/config"
-}
+func (c *Config) Load() error {
+	c.AliasesCache = defaultAliasesCache
+	c.LocationsCache = defaultLocationsCache
+	c.RegionsCache = defaultRegionsCache
 
-func getCredentialsPath() string {
-	home := os.Getenv("HOME")
-	if home == "" {
-		return ""
-	}
-	return home + "/.config/dp/credentials"
-}
+	configPath, credsPath := c.configPaths()
 
-func parseDuration(s string) time.Duration {
-	s += "s"
-	d, err := time.ParseDuration(s)
-	if err == nil {
-		return d
-	}
-	return time.Hour
-}
-
-func Load() (*Config, error) {
-	var cfg Config
-
-	path := getConfigPath()
-	if path != "" {
-		data, err := ini.Load(path)
+	if configPath != "" {
+		data, err := loadINI(configPath)
 		if err != nil && !os.IsNotExist(err) {
-			return nil, err
+			return err
 		}
 		if data != nil {
-			cfg.Output = data.Section("").Key("output").String()
-			cfg.APIURL = data.Section("").Key("api_url").String()
-			cfg.TestAPI = data.Section("").Key("test_api").MustBool(false)
+			c.Output = data["output"]
+			c.APIURL = data["api_url"]
+			c.TestAPI = strings.EqualFold(data["test_api"], "true")
 
-			if aliases := data.Section("").Key("aliases_cache").String(); aliases != "" {
-				cfg.AliasesCache = parseDuration(aliases)
-			} else {
-				cfg.AliasesCache = time.Hour
+			if aliases := data["aliases_cache"]; aliases != "" {
+				d, err := time.ParseDuration(aliases)
+				if err != nil {
+					return err
+				}
+				c.AliasesCache = d
 			}
 
-			if locations := data.Section("").Key("locations_cache").String(); locations != "" {
-				cfg.LocationsCache = parseDuration(locations)
-			} else {
-				cfg.LocationsCache = 7 * 24 * time.Hour
+			if locations := data["locations_cache"]; locations != "" {
+				d, err := time.ParseDuration(locations)
+				if err != nil {
+					return err
+				}
+				c.LocationsCache = d
 			}
 
-			if regions := data.Section("").Key("regions_cache").String(); regions != "" {
-				cfg.RegionsCache = parseDuration(regions)
-			} else {
-				cfg.RegionsCache = 7 * 24 * time.Hour
+			if regions := data["regions_cache"]; regions != "" {
+				d, err := time.ParseDuration(regions)
+				if err != nil {
+					return err
+				}
+				c.RegionsCache = d
 			}
 		}
 	}
 
-	credsPath := getCredentialsPath()
 	if credsPath != "" {
-		credsData, err := ini.Load(credsPath)
+		credsData, err := loadINI(credsPath)
 		if err != nil && !os.IsNotExist(err) {
-			return nil, err
+			return err
 		}
 		if credsData != nil {
-			if cfg.APIKey == "" {
-				cfg.APIKey = credsData.Section("").Key("api_key").String()
+			if c.APIKey == "" {
+				c.APIKey = credsData["api_key"]
 			}
 		}
 	}
 
-	return &cfg, nil
+	return nil
 }
 
-func GetAPIKey() (string, error) {
-	if key := os.Getenv("DATAPACKET_API_KEY"); key != "" {
-		return key, nil
-	}
-
-	cfg, err := Load()
-	if err != nil {
-		return "", err
-	}
-
-	if cfg.APIKey == "" {
-		return "", nil
-	}
-
-	return cfg.APIKey, nil
+func (c *Config) WithConfigDir(dir string) *Config {
+	c.configDir = dir
+	return c
 }
 
-func GetOutput() (string, error) {
-	cfg, err := Load()
-	if err != nil {
-		return "", err
+func (c *Config) configPaths() (config, credentials string) {
+	if c.configDir != "" {
+		return c.configDir + "/config", c.configDir + "/credentials"
 	}
-	return cfg.Output, nil
+	home := os.Getenv("HOME")
+	if home == "" {
+		return "", ""
+	}
+	return home + defaultConfigDir + "/config", home + defaultConfigDir + "/credentials"
 }
 
-func GetAPIURL() (string, error) {
-	cfg, err := Load()
-	if err != nil {
-		return "", err
+func loadINI(path string) (keys map[string]string, err error) {
+	f, openErr := os.Open(path) //nolint:gosec // path is from internal function
+	if openErr != nil {
+		return nil, openErr
 	}
-	return cfg.APIURL, nil
-}
+	defer func() {
+		closeErr := f.Close()
+		if closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 
-func GetTestAPI() bool {
-	cfg, _ := Load()
-	return cfg.TestAPI
-}
-
-func GetAliasesCache() time.Duration {
-	cfg, _ := Load()
-	if cfg.AliasesCache > 0 {
-		return cfg.AliasesCache
+	keys = make(map[string]string)
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		line := strings.TrimSpace(s.Text())
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "[") {
+			continue
+		}
+		if parts := strings.SplitN(line, "=", 2); len(parts) == 2 {
+			k := strings.TrimSpace(parts[0])
+			v := strings.TrimSpace(parts[1])
+			keys[k] = v
+		}
 	}
-	return time.Hour
-}
-
-func GetLocationsCache() time.Duration {
-	cfg, _ := Load()
-	if cfg.LocationsCache > 0 {
-		return cfg.LocationsCache
-	}
-	return 7 * 24 * time.Hour
-}
-
-func GetRegionsCache() time.Duration {
-	cfg, _ := Load()
-	if cfg.RegionsCache > 0 {
-		return cfg.RegionsCache
-	}
-	return 7 * 24 * time.Hour
+	return keys, s.Err()
 }
