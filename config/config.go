@@ -25,102 +25,110 @@ type Config struct {
 	RegionsCache   time.Duration
 }
 
-func (c *Config) Load() error {
-	configPath, credsPath := c.configPaths()
+type ConfigOption func(*Config)
+
+func WithConfigDir(dir string) ConfigOption {
+	return func(c *Config) {
+		c.configDir = dir
+	}
+}
+
+func Load(opts ...ConfigOption) (*Config, error) {
+	cfg := new(Config)
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	configPath, credsPath := cfg.configPaths()
 
 	var data map[string]string
 	if configPath != "" {
 		var err error
 		data, err = loadINI(configPath)
 		if err != nil && !os.IsNotExist(err) {
-			return err
+			return nil, err
 		}
 	}
 
 	if envOutput := os.Getenv("DATAPACKET_OUTPUT"); envOutput != "" {
-		c.Output = envOutput
+		cfg.Output = envOutput
 	} else if data != nil && data["output"] != "" {
-		c.Output = data["output"]
+		cfg.Output = data["output"]
 	}
 
 	if envAPIURL := os.Getenv("DATAPACKET_API_URL"); envAPIURL != "" {
-		c.APIURL = envAPIURL
+		cfg.APIURL = envAPIURL
 	} else if data != nil && data["api_url"] != "" {
-		c.APIURL = data["api_url"]
+		cfg.APIURL = data["api_url"]
 	}
 
 	if envTestAPI := os.Getenv("DATAPACKET_TEST_API"); envTestAPI != "" {
-		c.TestAPI = strings.EqualFold(envTestAPI, "true")
+		cfg.TestAPI = strings.EqualFold(envTestAPI, "true")
 	} else if data != nil {
-		c.TestAPI = strings.EqualFold(data["test_api"], "true")
+		cfg.TestAPI = strings.EqualFold(data["test_api"], "true")
 	}
 
 	if envAliases := os.Getenv("DATAPACKET_ALIASES_CACHE"); envAliases != "" {
 		d, err := time.ParseDuration(envAliases)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		c.AliasesCache = d
+		cfg.AliasesCache = d
 	} else if data != nil && data["aliases_cache"] != "" {
 		d, err := time.ParseDuration(data["aliases_cache"])
 		if err != nil {
-			return err
+			return nil, err
 		}
-		c.AliasesCache = d
+		cfg.AliasesCache = d
 	} else {
-		c.AliasesCache = defaultAliasesCache
+		cfg.AliasesCache = defaultAliasesCache
 	}
 
 	if envLocations := os.Getenv("DATAPACKET_LOCATIONS_CACHE"); envLocations != "" {
 		d, err := time.ParseDuration(envLocations)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		c.LocationsCache = d
+		cfg.LocationsCache = d
 	} else if data != nil && data["locations_cache"] != "" {
 		d, err := time.ParseDuration(data["locations_cache"])
 		if err != nil {
-			return err
+			return nil, err
 		}
-		c.LocationsCache = d
+		cfg.LocationsCache = d
 	} else {
-		c.LocationsCache = defaultLocationsCache
+		cfg.LocationsCache = defaultLocationsCache
 	}
 
 	if envRegions := os.Getenv("DATAPACKET_REGIONS_CACHE"); envRegions != "" {
 		d, err := time.ParseDuration(envRegions)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		c.RegionsCache = d
+		cfg.RegionsCache = d
 	} else if data != nil && data["regions_cache"] != "" {
 		d, err := time.ParseDuration(data["regions_cache"])
 		if err != nil {
-			return err
+			return nil, err
 		}
-		c.RegionsCache = d
+		cfg.RegionsCache = d
 	} else {
-		c.RegionsCache = defaultRegionsCache
+		cfg.RegionsCache = defaultRegionsCache
 	}
 
 	if credsPath != "" {
 		credsData, err := loadINI(credsPath)
 		if err != nil && !os.IsNotExist(err) {
-			return err
+			return nil, err
 		}
 		if credsData != nil {
-			if c.APIKey == "" {
-				c.APIKey = credsData["api_key"]
+			if cfg.APIKey == "" {
+				cfg.APIKey = credsData["api_key"]
 			}
 		}
 	}
 
-	return nil
-}
-
-func (c *Config) WithConfigDir(dir string) *Config {
-	c.configDir = dir
-	return c
+	return cfg, nil
 }
 
 func (c *Config) configPaths() (config, credentials string) {

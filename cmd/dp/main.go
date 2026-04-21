@@ -164,8 +164,8 @@ func main() {
 }
 
 func run(cmd string, args []string, opts server.Options) error {
-	cfg := new(config.Config)
-	if err := cfg.Load(); err != nil {
+	cfg, err := config.Load()
+	if err != nil {
 		return err
 	}
 	wide := outputWide || flag.Lookup("output-wide").Value.String() == "true"

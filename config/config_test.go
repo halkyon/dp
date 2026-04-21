@@ -160,9 +160,8 @@ api_url = https://example.com
 func TestConfig_Load(t *testing.T) {
 	t.Run("no config file returns defaults", func(t *testing.T) {
 		dir := t.TempDir()
-		var cfg Config
-		cfg.WithConfigDir(dir)
-		require.NoError(t, cfg.Load())
+		cfg, err := Load(WithConfigDir(dir))
+		require.NoError(t, err)
 		assert.Empty(t, cfg.APIKey)
 		assert.Empty(t, cfg.Output)
 		assert.Empty(t, cfg.APIURL)
@@ -174,8 +173,6 @@ func TestConfig_Load(t *testing.T) {
 
 	t.Run("with config file", func(t *testing.T) {
 		dir := t.TempDir()
-		cfg := new(Config)
-		cfg.WithConfigDir(dir)
 
 		cfgContent := `output = table
 api_url = https://test.example.com
@@ -187,7 +184,8 @@ regions_cache = 48h
 		err := os.WriteFile(filepath.Join(dir, "config"), []byte(cfgContent), 0600)
 		require.NoError(t, err)
 
-		require.NoError(t, cfg.Load())
+		cfg, err := Load(WithConfigDir(dir))
+		require.NoError(t, err)
 		assert.Equal(t, "table", cfg.Output)
 		assert.Equal(t, "https://test.example.com", cfg.APIURL)
 		assert.True(t, cfg.TestAPI)
@@ -198,8 +196,6 @@ regions_cache = 48h
 
 	t.Run("credentials file", func(t *testing.T) {
 		dir := t.TempDir()
-		cfg := new(Config)
-		cfg.WithConfigDir(dir)
 
 		//nolint:gosec // test fixture
 		credContent := `api_key = my-secret-key
@@ -207,58 +203,48 @@ regions_cache = 48h
 		err := os.WriteFile(filepath.Join(dir, "credentials"), []byte(credContent), 0600)
 		require.NoError(t, err)
 
-		require.NoError(t, cfg.Load())
+		cfg, err := Load(WithConfigDir(dir))
+		require.NoError(t, err)
 		assert.Equal(t, "my-secret-key", cfg.APIKey)
 	})
 
 	t.Run("test_api case insensitive", func(t *testing.T) {
 		dir := t.TempDir()
-		cfg := new(Config)
-		cfg.WithConfigDir(dir)
 
 		cfgContent := `test_api = TRUE
 `
 		err := os.WriteFile(filepath.Join(dir, "config"), []byte(cfgContent), 0600)
 		require.NoError(t, err)
 
-		require.NoError(t, cfg.Load())
+		cfg, err := Load(WithConfigDir(dir))
+		require.NoError(t, err)
 		assert.True(t, cfg.TestAPI)
 	})
 
 	t.Run("invalid duration returns error", func(t *testing.T) {
 		dir := t.TempDir()
-		cfg := new(Config)
-		cfg.WithConfigDir(dir)
 
 		cfgContent := `aliases_cache = not-a-duration
 `
 		err := os.WriteFile(filepath.Join(dir, "config"), []byte(cfgContent), 0600)
 		require.NoError(t, err)
 
-		assert.Error(t, cfg.Load())
+		_, err = Load(WithConfigDir(dir))
+		assert.Error(t, err)
 	})
 
 	t.Run("config file read error", func(t *testing.T) {
 		dir := t.TempDir()
-		cfg := new(Config)
-		cfg.WithConfigDir(dir)
 
 		err := os.WriteFile(filepath.Join(dir, "config"), []byte("output = json"), 0000)
 		require.NoError(t, err)
 
-		assert.Error(t, cfg.Load())
-	})
-
-	t.Run("WithConfigDir", func(t *testing.T) {
-		dir := t.TempDir()
-		cfg := new(Config).WithConfigDir(dir)
-		assert.Equal(t, dir, cfg.configDir)
+		_, err = Load(WithConfigDir(dir))
+		assert.Error(t, err)
 	})
 
 	t.Run("env vars override config file", func(t *testing.T) {
 		dir := t.TempDir()
-		cfg := new(Config)
-		cfg.WithConfigDir(dir)
 
 		cfgContent := `output = json
 api_url = https://file.example.com
@@ -277,7 +263,8 @@ regions_cache = 1h
 		t.Setenv("DATAPACKET_LOCATIONS_CACHE", "5h")
 		t.Setenv("DATAPACKET_REGIONS_CACHE", "7h")
 
-		require.NoError(t, cfg.Load())
+		cfg, err := Load(WithConfigDir(dir))
+		require.NoError(t, err)
 		assert.Equal(t, "csv", cfg.Output)
 		assert.Equal(t, "https://env.example.com", cfg.APIURL)
 		assert.True(t, cfg.TestAPI)
@@ -288,11 +275,10 @@ regions_cache = 1h
 
 	t.Run("env var invalid duration returns error", func(t *testing.T) {
 		dir := t.TempDir()
-		cfg := new(Config)
-		cfg.WithConfigDir(dir)
 
 		t.Setenv("DATAPACKET_ALIASES_CACHE", "not-a-duration")
 
-		assert.Error(t, cfg.Load())
+		_, err := Load(WithConfigDir(dir))
+		assert.Error(t, err)
 	})
 }
