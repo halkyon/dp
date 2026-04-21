@@ -26,46 +26,81 @@ type Config struct {
 }
 
 func (c *Config) Load() error {
-	c.AliasesCache = defaultAliasesCache
-	c.LocationsCache = defaultLocationsCache
-	c.RegionsCache = defaultRegionsCache
-
 	configPath, credsPath := c.configPaths()
 
+	var data map[string]string
 	if configPath != "" {
-		data, err := loadINI(configPath)
+		var err error
+		data, err = loadINI(configPath)
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
-		if data != nil {
-			c.Output = data["output"]
-			c.APIURL = data["api_url"]
-			c.TestAPI = strings.EqualFold(data["test_api"], "true")
+	}
 
-			if aliases := data["aliases_cache"]; aliases != "" {
-				d, err := time.ParseDuration(aliases)
-				if err != nil {
-					return err
-				}
-				c.AliasesCache = d
-			}
+	if envOutput := os.Getenv("DATAPACKET_OUTPUT"); envOutput != "" {
+		c.Output = envOutput
+	} else if data != nil && data["output"] != "" {
+		c.Output = data["output"]
+	}
 
-			if locations := data["locations_cache"]; locations != "" {
-				d, err := time.ParseDuration(locations)
-				if err != nil {
-					return err
-				}
-				c.LocationsCache = d
-			}
+	if envAPIURL := os.Getenv("DATAPACKET_API_URL"); envAPIURL != "" {
+		c.APIURL = envAPIURL
+	} else if data != nil && data["api_url"] != "" {
+		c.APIURL = data["api_url"]
+	}
 
-			if regions := data["regions_cache"]; regions != "" {
-				d, err := time.ParseDuration(regions)
-				if err != nil {
-					return err
-				}
-				c.RegionsCache = d
-			}
+	if envTestAPI := os.Getenv("DATAPACKET_TEST_API"); envTestAPI != "" {
+		c.TestAPI = strings.EqualFold(envTestAPI, "true")
+	} else if data != nil {
+		c.TestAPI = strings.EqualFold(data["test_api"], "true")
+	}
+
+	if envAliases := os.Getenv("DATAPACKET_ALIASES_CACHE"); envAliases != "" {
+		d, err := time.ParseDuration(envAliases)
+		if err != nil {
+			return err
 		}
+		c.AliasesCache = d
+	} else if data != nil && data["aliases_cache"] != "" {
+		d, err := time.ParseDuration(data["aliases_cache"])
+		if err != nil {
+			return err
+		}
+		c.AliasesCache = d
+	} else {
+		c.AliasesCache = defaultAliasesCache
+	}
+
+	if envLocations := os.Getenv("DATAPACKET_LOCATIONS_CACHE"); envLocations != "" {
+		d, err := time.ParseDuration(envLocations)
+		if err != nil {
+			return err
+		}
+		c.LocationsCache = d
+	} else if data != nil && data["locations_cache"] != "" {
+		d, err := time.ParseDuration(data["locations_cache"])
+		if err != nil {
+			return err
+		}
+		c.LocationsCache = d
+	} else {
+		c.LocationsCache = defaultLocationsCache
+	}
+
+	if envRegions := os.Getenv("DATAPACKET_REGIONS_CACHE"); envRegions != "" {
+		d, err := time.ParseDuration(envRegions)
+		if err != nil {
+			return err
+		}
+		c.RegionsCache = d
+	} else if data != nil && data["regions_cache"] != "" {
+		d, err := time.ParseDuration(data["regions_cache"])
+		if err != nil {
+			return err
+		}
+		c.RegionsCache = d
+	} else {
+		c.RegionsCache = defaultRegionsCache
 	}
 
 	if credsPath != "" {

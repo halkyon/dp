@@ -254,4 +254,45 @@ regions_cache = 48h
 		cfg := new(Config).WithConfigDir(dir)
 		assert.Equal(t, dir, cfg.configDir)
 	})
+
+	t.Run("env vars override config file", func(t *testing.T) {
+		dir := t.TempDir()
+		cfg := new(Config)
+		cfg.WithConfigDir(dir)
+
+		cfgContent := `output = json
+api_url = https://file.example.com
+test_api = false
+aliases_cache = 1h
+locations_cache = 1h
+regions_cache = 1h
+`
+		err := os.WriteFile(filepath.Join(dir, "config"), []byte(cfgContent), 0600)
+		require.NoError(t, err)
+
+		t.Setenv("DATAPACKET_OUTPUT", "csv")
+		t.Setenv("DATAPACKET_API_URL", "https://env.example.com")
+		t.Setenv("DATAPACKET_TEST_API", "true")
+		t.Setenv("DATAPACKET_ALIASES_CACHE", "3h")
+		t.Setenv("DATAPACKET_LOCATIONS_CACHE", "5h")
+		t.Setenv("DATAPACKET_REGIONS_CACHE", "7h")
+
+		require.NoError(t, cfg.Load())
+		assert.Equal(t, "csv", cfg.Output)
+		assert.Equal(t, "https://env.example.com", cfg.APIURL)
+		assert.True(t, cfg.TestAPI)
+		assert.Equal(t, 3*time.Hour, cfg.AliasesCache)
+		assert.Equal(t, 5*time.Hour, cfg.LocationsCache)
+		assert.Equal(t, 7*time.Hour, cfg.RegionsCache)
+	})
+
+	t.Run("env var invalid duration returns error", func(t *testing.T) {
+		dir := t.TempDir()
+		cfg := new(Config)
+		cfg.WithConfigDir(dir)
+
+		t.Setenv("DATAPACKET_ALIASES_CACHE", "not-a-duration")
+
+		assert.Error(t, cfg.Load())
+	})
 }
