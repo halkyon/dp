@@ -51,56 +51,60 @@ api_key = your-api-key
 
 ## Commands
 
-### show - List servers
+### servers
+
+List servers with optional filters.
 
 ```bash
-# List all servers (sorted by price)
-dp show
+# List all servers
+dp servers
 
-# Output formats: json (default), table, csv
-dp -o table show
-dp -o csv show
+# Output formats: json, table, csv (default json)
+dp servers -o table
+dp servers -o csv
 
-# Combine with filters (flags work before or after command)
-dp -o csv show --alias=dp-select-storage-slo-4
-dp -o table show --location=London
+# Combine with filters (flags after command)
+dp servers -o csv --alias=dp-select-storage-slo-4
+dp servers -o table --location=London
 
-# Show wide table/csv with more fields
-dp -o table -ow show
-dp -o csv --output-wide show
+# Show more fields in table/csv
+dp servers -o table -ow
+dp servers -o csv --output-wide
 
 # Filter by name (repeatable)
-dp show --name DP-12345 --name DP-67890
+dp servers --name DP-12345 --name DP-67890
 
 # Filter by alias (repeatable)
-dp show --alias my-server --alias prod-server
+dp servers --alias my-server --alias prod-server
 
 # Filter by location (repeatable)
-dp show --location Amsterdam --location Berlin
+dp servers --location Amsterdam --location Berlin
 
 # Filter by region (repeatable)
-dp show --region EU --region NA
+dp servers --region EU --region NA
 
 # Filter by status (repeatable)
-dp show --status ACTIVE --status MAINTENANCE
+dp servers --status ACTIVE --status MAINTENANCE
 
 # Filter by power status (repeatable)
-dp show --power ON
+dp servers --power ON
 
 # Filter by tag (repeatable)
-dp show --tag env=prod --tag team=backend
+dp servers --tag env=prod --tag team=backend
 
-# Output specific fields (repeatable)
-dp show --query Name --query Alias --query IP
+# Output specific field(s) (repeatable)
+dp servers --query Name --query Alias --query IP
 
 # Fuzzy filter using jq
-dp show | jq '[.[] | select(.alias) | select(.alias | test("dp-prod-edge-fra01-[0-9]"))]'
+dp servers | jq '[.[] | select(.alias) | select(.alias | test("dp-prod-edge-fra01-[0-9]"))]'
 ```
 
-### ssh - SSH to server
+### ssh
+
+SSH to server by alias.
 
 ```bash
-# SSH using default user (based on OS)
+# SSH using default user (root on linux, admin on windows)
 dp ssh my-server
 
 # SSH as different user
@@ -113,38 +117,27 @@ dp -v ssh my-server
 dp ssh --user=admin my-server
 ```
 
+### completion
+
+Generate shell completion script.
+
+```bash
+dp completion bash > /etc/bash_completion.d/dp
+dp completion zsh > ~/.zsh/completions/_dp
+dp completion fish > ~/.config/fish/completions/dp.fish
+```
+
 ## Global Options
 
 ```bash
--o, --output <format>  Output format: json, table, csv (default "json")
-    --output-wide      Show more fields in table/csv output
--q, --query <fields>   Output specific field(s) (repeatable)
--v, --verbose          Print verbose information
-```
-
-**Note:** Flags can come before or after the command (e.g., `dp -o csv show --name=foo` or `dp show -o csv`).
-
-### ssh - SSH to server
-
-```bash
-# SSH using default user (based on OS)
-dp ssh my-server
-
-# SSH as different user
-dp ssh root@my-server
-
-# SSH with verbose output
-dp -v ssh my-server
-
-# SSH with specific user (flag after command)
-dp ssh --user=admin my-server
+--test-api   Use test API server
 ```
 
 ## Shell completion setup
 
 After sourcing the completion script (see below), tab completion will work for:
-- Commands (show, ssh, completion)
-- Alias names when using `show` or `ssh`
+- Commands (servers, ssh, completion)
+- Alias names when using `servers` or `ssh`
 
 ### zsh
 

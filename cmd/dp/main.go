@@ -55,6 +55,7 @@ func init() {
 	flag.StringVar(&outputFormatFlag, "output", "", "Output format: json, table, csv")
 	flag.BoolVar(&outputWide, "ow", false, "Show more fields (shorthand)")
 	flag.Bool("output-wide", false, "Show more fields in table/csv output")
+	flag.Var(queryFields, "q", "Output specific field(s) (repeatable)")
 	flag.Var(queryFields, "query", "Output specific field(s) (repeatable)")
 
 	flag.Var(flagName, "n", "Filter by name (repeatable)")
@@ -90,7 +91,7 @@ func main() {
 
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] <command> [command options]\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Commands:\n")
-		fmt.Fprintf(os.Stderr, "  show         List servers with optional filters\n")
+		fmt.Fprintf(os.Stderr, "  servers      List servers with optional filters\n")
 		fmt.Fprintf(os.Stderr, "  ssh          SSH to server by alias\n")
 		fmt.Fprintf(os.Stderr, "  completion   Generate shell completion script\n")
 		fmt.Fprintf(os.Stderr, "  aliases      List all server aliases\n")
@@ -100,8 +101,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  status       List all server statuses\n\n")
 
 		switch cmd {
-		case "show":
-			fmt.Fprintf(os.Stderr, "Options for show:\n")
+		case "servers":
+			fmt.Fprintf(os.Stderr, "Options for servers:\n")
 			fmt.Fprintf(os.Stderr, "  -o, --output <format>   Output format: json, table, csv (default json)\n")
 			fmt.Fprintf(os.Stderr, "  -ow, --output-wide      Show more fields in table/csv\n")
 			fmt.Fprintf(os.Stderr, "  -q, --query <field>     Output specific field(s) (repeatable)\n")
@@ -182,9 +183,9 @@ func run(cmd string, args []string, opts server.Options) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	switch cmd {
-	case "show":
-		return runShow(ctx, output, wide, *queryFields, opts)
+switch cmd {
+		case "servers":
+			return runShow(ctx, output, wide, *queryFields, opts)
 	case "ssh":
 		var sshArgs []string
 		for _, arg := range args {
