@@ -69,6 +69,34 @@ _dp() {
             prev_word="--power"
         elif [[ "$prev" == --status ]]; then
             prev_word="--status"
+        elif [[ "$prev" == -n* ]]; then
+            prev_word="--name"
+        elif [[ "$prev" == -a* ]]; then
+            prev_word="--alias"
+        elif [[ "$prev" == -l* ]]; then
+            prev_word="--location"
+        elif [[ "$prev" == -r* ]]; then
+            prev_word="--region"
+        elif [[ "$prev" == -s* ]]; then
+            prev_word="--status"
+        elif [[ "$prev" == -p* ]]; then
+            prev_word="--power"
+        elif [[ "$prev" == -t* ]]; then
+            prev_word="--tag"
+        elif [[ "$prev" == -n ]]; then
+            prev_word="--name"
+        elif [[ "$prev" == -a ]]; then
+            prev_word="--alias"
+        elif [[ "$prev" == -l ]]; then
+            prev_word="--location"
+        elif [[ "$prev" == -r ]]; then
+            prev_word="--region"
+        elif [[ "$prev" == -s ]]; then
+            prev_word="--status"
+        elif [[ "$prev" == -p ]]; then
+            prev_word="--power"
+        elif [[ "$prev" == -t ]]; then
+            prev_word="--tag"
         fi
 
         case "$prev_word" in
@@ -116,6 +144,18 @@ _dp() {
                     COMPREPLY=($(compgen -W "${server_statuses[*]}" -- "$cur"))
                 fi
                 ;;
+            --name)
+                local -a names
+                if names=($({{.Name}} --test-api show --name - 2>/dev/null | jq -r '.[].Name')); then
+                    COMPREPLY=($(compgen -W "${names[*]}" -- "$cur"))
+                fi
+                ;;
+            --tag)
+                local -a tags
+                if tags=($({{.Name}} --test-api show --tag - 2>/dev/null | jq -r '.[].Tags[]' 2>/dev/null)); then
+                    COMPREPLY=($(compgen -W "${tags[*]}" -- "$cur"))
+                fi
+                ;;
         esac
     fi
 }
@@ -153,6 +193,34 @@ _dp() {
             prev_word="--power"
         elif [[ "$prev_word" == --status=* ]]; then
             prev_word="--status"
+        elif [[ "$prev_word" == -n* ]]; then
+            prev_word="--name"
+        elif [[ "$prev_word" == -a* ]]; then
+            prev_word="--alias"
+        elif [[ "$prev_word" == -l* ]]; then
+            prev_word="--location"
+        elif [[ "$prev_word" == -r* ]]; then
+            prev_word="--region"
+        elif [[ "$prev_word" == -s* ]]; then
+            prev_word="--status"
+        elif [[ "$prev_word" == -p* ]]; then
+            prev_word="--power"
+        elif [[ "$prev_word" == -t* ]]; then
+            prev_word="--tag"
+        elif [[ "$prev_word" == -n ]]; then
+            prev_word="--name"
+        elif [[ "$prev_word" == -a ]]; then
+            prev_word="--alias"
+        elif [[ "$prev_word" == -l ]]; then
+            prev_word="--location"
+        elif [[ "$prev_word" == -r ]]; then
+            prev_word="--region"
+        elif [[ "$prev_word" == -s ]]; then
+            prev_word="--status"
+        elif [[ "$prev_word" == -p ]]; then
+            prev_word="--power"
+        elif [[ "$prev_word" == -t ]]; then
+            prev_word="--tag"
         fi
 
         case "$prev_word" in
@@ -184,6 +252,16 @@ _dp() {
                 local -a server_statuses
                 server_statuses=($({{.Name}} status 2>/dev/null))
                 _describe "status" server_statuses
+                ;;
+            --name)
+                local -a names
+                names=($({{.Name}} --test-api show --name - 2>/dev/null | jq -r '.[].Name'))
+                _describe "name" names
+                ;;
+            --tag)
+                local -a tags
+                tags=($({{.Name}} --test-api show --tag - 2>/dev/null | jq -r '.[].Tags[]' 2>/dev/null))
+                _describe "tag" tags
                 ;;
             *)
                 local -a aliases
@@ -264,6 +342,41 @@ function __fish_{{.Name}}_complete_filter
         set filter_type "power"
     else if test "$cur" = "--status"
         set filter_type "status"
+    else if string match -q '-n*' "$prev"
+        set filter_type "name"
+        set word_to_complete (string replace '-n' '' "$cur")
+    else if string match -q '-a*' "$prev"
+        set filter_type "alias"
+        set word_to_complete (string replace '-a' '' "$cur")
+    else if string match -q '-l*' "$prev"
+        set filter_type "location"
+        set word_to_complete (string replace '-l' '' "$cur")
+    else if string match -q '-r*' "$prev"
+        set filter_type "region"
+        set word_to_complete (string replace '-r' '' "$cur")
+    else if string match -q '-s*' "$prev"
+        set filter_type "status"
+        set word_to_complete (string replace '-s' '' "$cur")
+    else if string match -q '-p*' "$prev"
+        set filter_type "power"
+        set word_to_complete (string replace '-p' '' "$cur")
+    else if string match -q '-t*' "$prev"
+        set filter_type "tag"
+        set word_to_complete (string replace '-t' '' "$cur")
+    else if test "$cur" = "-n"
+        set filter_type "name"
+    else if test "$cur" = "-a"
+        set filter_type "alias"
+    else if test "$cur" = "-l"
+        set filter_type "location"
+    else if test "$cur" = "-r"
+        set filter_type "region"
+    else if test "$cur" = "-s"
+        set filter_type "status"
+    else if test "$cur" = "-p"
+        set filter_type "power"
+    else if test "$cur" = "-t"
+        set filter_type "tag"
     end
 
     switch "$filter_type"
@@ -277,6 +390,10 @@ function __fish_{{.Name}}_complete_filter
             {{.Name}} power 2>/dev/null | string match "$word_to_complete*"
         case "status"
             {{.Name}} status 2>/dev/null | string match "$word_to_complete*"
+        case "name"
+            {{.Name}} --test-api show --name - 2>/dev/null | jq -r '.[].Name' | string match "$word_to_complete*"
+        case "tag"
+            {{.Name}} --test-api show --tag - 2>/dev/null | jq -r '.[].Tags[]' 2>/dev/null | string match "$word_to_complete*"
     end
 end
 
@@ -295,18 +412,18 @@ complete -c {{.Name}} -f -a '(__fish_{{.Name}}_complete_filter)'
 
 func renderBashCompletion(name string) string {
 	var buf strings.Builder
-	bashCompletionTmpl.Execute(&buf, struct{ Name string }{Name: name})
+	_ = bashCompletionTmpl.Execute(&buf, struct{ Name string }{Name: name})
 	return buf.String()
 }
 
 func renderZshCompletion(name string) string {
 	var buf strings.Builder
-	zshCompletionTmpl.Execute(&buf, struct{ Name string }{Name: name})
+	_ = zshCompletionTmpl.Execute(&buf, struct{ Name string }{Name: name})
 	return buf.String()
 }
 
 func renderFishCompletion(name string) string {
 	var buf strings.Builder
-	fishCompletionTmpl.Execute(&buf, struct{ Name string }{Name: name})
+	_ = fishCompletionTmpl.Execute(&buf, struct{ Name string }{Name: name})
 	return buf.String()
 }

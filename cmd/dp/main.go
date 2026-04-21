@@ -57,12 +57,19 @@ func init() {
 	flag.Bool("output-wide", false, "Show more fields in table/csv output")
 	flag.Var(queryFields, "query", "Output specific field(s) (repeatable)")
 
+	flag.Var(flagName, "n", "Filter by name (repeatable)")
 	flag.Var(flagName, "name", "Filter by name (repeatable)")
+	flag.Var(flagAlias, "a", "Filter by alias (repeatable)")
 	flag.Var(flagAlias, "alias", "Filter by alias (repeatable)")
+	flag.Var(flagLocation, "l", "Filter by location (repeatable)")
 	flag.Var(flagLocation, "location", "Filter by location (repeatable)")
+	flag.Var(flagRegion, "r", "Filter by region (repeatable)")
 	flag.Var(flagRegion, "region", "Filter by region (repeatable)")
+	flag.Var(flagStatus, "s", "Filter by status (repeatable)")
 	flag.Var(flagStatus, "status", "Filter by status (repeatable)")
+	flag.Var(flagPower, "p", "Filter by power status (repeatable)")
 	flag.Var(flagPower, "power", "Filter by power status (repeatable)")
+	flag.Var(flagTag, "t", "Filter by tag (repeatable)")
 	flag.Var(flagTag, "tag", "Filter by tag (repeatable)")
 
 	flag.Var(flagUser, "user", "SSH user (for ssh command)")
@@ -70,6 +77,59 @@ func init() {
 }
 
 func main() {
+	flag.Usage = func() {
+		cmd := ""
+		args := os.Args[1:]
+		for i, a := range args {
+			if !strings.HasPrefix(a, "-") {
+				cmd = a
+				args = args[i:]
+				break
+			}
+		}
+
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] <command> [command options]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Commands:\n")
+		fmt.Fprintf(os.Stderr, "  show         List servers with optional filters\n")
+		fmt.Fprintf(os.Stderr, "  ssh          SSH to server by alias\n")
+		fmt.Fprintf(os.Stderr, "  completion   Generate shell completion script\n")
+		fmt.Fprintf(os.Stderr, "  aliases      List all server aliases\n")
+		fmt.Fprintf(os.Stderr, "  locations    List all available locations\n")
+		fmt.Fprintf(os.Stderr, "  regions      List all available regions\n")
+		fmt.Fprintf(os.Stderr, "  power        List all power statuses\n")
+		fmt.Fprintf(os.Stderr, "  status       List all server statuses\n\n")
+
+		switch cmd {
+		case "show":
+			fmt.Fprintf(os.Stderr, "Options for show:\n")
+			fmt.Fprintf(os.Stderr, "  -o, --output <format>   Output format: json, table, csv (default json)\n")
+			fmt.Fprintf(os.Stderr, "  -ow, --output-wide      Show more fields in table/csv\n")
+			fmt.Fprintf(os.Stderr, "  -q, --query <field>     Output specific field(s) (repeatable)\n")
+			fmt.Fprintf(os.Stderr, "\nFilters (shorthand, long form):\n")
+			fmt.Fprintf(os.Stderr, "  -n, --name <val>      Filter by name (repeatable)\n")
+			fmt.Fprintf(os.Stderr, "  -a, --alias <val>     Filter by alias (repeatable)\n")
+			fmt.Fprintf(os.Stderr, "  -l, --location <val>  Filter by location (repeatable)\n")
+			fmt.Fprintf(os.Stderr, "  -r, --region <val>    Filter by region (repeatable)\n")
+			fmt.Fprintf(os.Stderr, "  -s, --status <val>    Filter by status (repeatable)\n")
+			fmt.Fprintf(os.Stderr, "  -p, --power <val>     Filter by power status (repeatable)\n")
+			fmt.Fprintf(os.Stderr, "  -t, --tag <val>       Filter by tag (repeatable)\n")
+		case "ssh":
+			fmt.Fprintf(os.Stderr, "Options for ssh:\n")
+			fmt.Fprintf(os.Stderr, "  -v, --verbose           Print verbose information\n")
+			fmt.Fprintf(os.Stderr, "  --user <name>           SSH user (default: root on linux, admin on windows)\n")
+		case "completion":
+			fmt.Fprintf(os.Stderr, "Options for completion:\n")
+			fmt.Fprintf(os.Stderr, "  (shell name required: bash, zsh, fish)\n")
+		case "aliases", "locations", "regions", "power", "status":
+			fmt.Fprintf(os.Stderr, "Options:\n")
+			fmt.Fprintf(os.Stderr, "  --test-api             Use test API server\n")
+		default:
+			fmt.Fprintf(os.Stderr, "Options:\n")
+			fmt.Fprintf(os.Stderr, "  --test-api             Use test API server\n")
+			fmt.Fprintf(os.Stderr, "  -v, --verbose          Print verbose information\n")
+		}
+	}
+
 	flag.Parse()
 
 	if flag.NArg() < 1 {
