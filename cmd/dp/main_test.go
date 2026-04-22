@@ -48,6 +48,7 @@ func TestPrintTable(t *testing.T) {
 		assert.Contains(t, got, "DP-12345")
 		assert.Contains(t, got, "Ubuntu")
 		assert.Contains(t, got, "99.99")
+		assert.Contains(t, got, "POWER")
 	})
 
 	t.Run("Query fields table", func(t *testing.T) {
@@ -101,7 +102,7 @@ func TestPrintCSV(t *testing.T) {
 
 		records, err := csv.NewReader(buf).ReadAll()
 		require.NoError(t, err)
-		assert.Equal(t, []string{"Name", "Alias", "Status", "Location", "IP", "OS", "CPU", "Memory", "Storage", "Price"}, records[0])
+		assert.Equal(t, []string{"Name", "Alias", "Status", "Power", "Location", "IP", "OS", "CPU", "Memory", "Storage", "Price"}, records[0])
 	})
 
 	t.Run("CSV Query Fields", func(t *testing.T) {

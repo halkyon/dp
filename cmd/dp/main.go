@@ -294,6 +294,7 @@ func printTable(servers []server.Server, wide bool, queryFields []string) string
 			{name: "Name", displayName: "NAME", width: 0},
 			{name: "Alias", displayName: "ALIAS", width: 0},
 			{name: "Status", displayName: "STATUS", width: 0},
+			{name: "Power", displayName: "POWER", width: 0},
 			{name: "Location", displayName: "LOCATION", width: 0},
 			{name: "IP", displayName: "IP", width: 0},
 			{name: "OS", displayName: "OS", width: 0},
@@ -372,6 +373,8 @@ func getFieldValue(s server.Server, field string) string {
 		return s.Alias
 	case "status":
 		return s.Status
+	case "power", "powerstatus":
+		return s.PowerStatus
 	case "location":
 		return s.Location
 	case "ip":
@@ -397,7 +400,7 @@ func printCSV(w *csv.Writer, servers []server.Server, wide bool, queryFields []s
 	case len(queryFields) > 0:
 		fields = queryFields
 	case wide:
-		fields = []string{"Name", "Alias", "Status", "Location", "IP", "OS", "CPU", "Memory", "Storage", "Price"}
+		fields = []string{"Name", "Alias", "Status", "Power", "Location", "IP", "OS", "CPU", "Memory", "Storage", "Price"}
 	default:
 		fields = []string{"Name", "Alias", "Status", "Location", "IP"}
 	}
