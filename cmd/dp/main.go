@@ -190,17 +190,10 @@ func run(cmd string, args []string, opts server.Options) error {
 	case "servers":
 		return runShow(ctx, output, wide, *queryFields, opts, cfg)
 	case "ssh":
-		var sshArgs []string
-		for _, arg := range args {
-			if strings.HasPrefix(arg, "-") {
-				continue
-			}
-			sshArgs = append(sshArgs, arg)
-		}
-		if len(sshArgs) < 1 {
+		if len(args) < 1 {
 			return errors.New("usage: dp ssh <alias> [ssh flags...]")
 		}
-		return runSSH(ctx, opts, sshUser, sshArgs, verbose, cfg)
+		return runSSH(ctx, opts, sshUser, args, verbose, cfg)
 	case "completion":
 		if len(args) < 1 {
 			return errors.New("usage: dp completion <bash|zsh|fish>")
