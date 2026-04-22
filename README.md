@@ -29,7 +29,7 @@ The output format is loaded in the following order of priority:
 3. default `json`
 
 Config is loaded from two files:
-- `~/.config/dp/config` - output, api_url, test_api, cache durations
+- `~/.config/dp/config` - output, api_url, cache durations
 - `~/.config/dp/credentials` - api_key
 
 Example `~/.config/dp/config`:
@@ -37,7 +37,6 @@ Example `~/.config/dp/config`:
 ```ini
 output = table
 api_url = https://api.example.com/graphql
-test_api = true
 aliases_cache = 24h
 locations_cache = 168h
 regions_cache = 168h
@@ -130,7 +129,6 @@ dp completion fish > ~/.config/fish/completions/dp.fish
 ## Global Options
 
 ```bash
---test-api             Use test API server
 -v, --verbose          Print verbose information
 ```
 

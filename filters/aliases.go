@@ -11,10 +11,10 @@ import (
 
 type Aliases struct {
 	cache  *cache.Cache[[]string]
-	client *api.Client
+	client api.Querier
 }
 
-func NewAliases(client *api.Client, cacheDuration time.Duration, cacheDir string) (*Aliases, error) {
+func NewAliases(client api.Querier, cacheDuration time.Duration, cacheDir string) (*Aliases, error) {
 	c, err := cache.New[[]string]("aliases", cacheDuration, cacheDir)
 	if err != nil {
 		return nil, err

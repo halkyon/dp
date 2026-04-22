@@ -165,7 +165,6 @@ func TestConfig_Load(t *testing.T) {
 		assert.Empty(t, cfg.APIKey)
 		assert.Empty(t, cfg.Output)
 		assert.Empty(t, cfg.APIURL)
-		assert.False(t, cfg.TestAPI)
 		assert.Equal(t, defaultAliasesCache, cfg.AliasesCache)
 		assert.Equal(t, defaultLocationsCache, cfg.LocationsCache)
 		assert.Equal(t, defaultRegionsCache, cfg.RegionsCache)
@@ -188,7 +187,6 @@ regions_cache = 48h
 		require.NoError(t, err)
 		assert.Equal(t, "table", cfg.Output)
 		assert.Equal(t, "https://test.example.com", cfg.APIURL)
-		assert.True(t, cfg.TestAPI)
 		assert.Equal(t, 2*time.Hour, cfg.AliasesCache)
 		assert.Equal(t, 24*time.Hour, cfg.LocationsCache)
 		assert.Equal(t, 48*time.Hour, cfg.RegionsCache)
@@ -206,19 +204,6 @@ regions_cache = 48h
 		cfg, err := Load(WithConfigDir(dir))
 		require.NoError(t, err)
 		assert.Equal(t, "my-secret-key", cfg.APIKey)
-	})
-
-	t.Run("test_api case insensitive", func(t *testing.T) {
-		dir := t.TempDir()
-
-		cfgContent := `test_api = TRUE
-`
-		err := os.WriteFile(filepath.Join(dir, "config"), []byte(cfgContent), 0600)
-		require.NoError(t, err)
-
-		cfg, err := Load(WithConfigDir(dir))
-		require.NoError(t, err)
-		assert.True(t, cfg.TestAPI)
 	})
 
 	t.Run("invalid duration returns error", func(t *testing.T) {
@@ -248,7 +233,6 @@ regions_cache = 48h
 
 		cfgContent := `output = json
 api_url = https://file.example.com
-test_api = false
 aliases_cache = 1h
 locations_cache = 1h
 regions_cache = 1h
@@ -258,7 +242,6 @@ regions_cache = 1h
 
 		t.Setenv("DATAPACKET_OUTPUT", "csv")
 		t.Setenv("DATAPACKET_API_URL", "https://env.example.com")
-		t.Setenv("DATAPACKET_TEST_API", "true")
 		t.Setenv("DATAPACKET_ALIASES_CACHE", "3h")
 		t.Setenv("DATAPACKET_LOCATIONS_CACHE", "5h")
 		t.Setenv("DATAPACKET_REGIONS_CACHE", "7h")
@@ -267,7 +250,6 @@ regions_cache = 1h
 		require.NoError(t, err)
 		assert.Equal(t, "csv", cfg.Output)
 		assert.Equal(t, "https://env.example.com", cfg.APIURL)
-		assert.True(t, cfg.TestAPI)
 		assert.Equal(t, 3*time.Hour, cfg.AliasesCache)
 		assert.Equal(t, 5*time.Hour, cfg.LocationsCache)
 		assert.Equal(t, 7*time.Hour, cfg.RegionsCache)

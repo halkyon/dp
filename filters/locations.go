@@ -10,10 +10,10 @@ import (
 
 type Locations struct {
 	cache  *cache.Cache[[]string]
-	client *api.Client
+	client api.Querier
 }
 
-func NewLocations(client *api.Client, cacheDuration time.Duration, cacheDir string) (*Locations, error) {
+func NewLocations(client api.Querier, cacheDuration time.Duration, cacheDir string) (*Locations, error) {
 	c, err := cache.New[[]string]("locations", cacheDuration, cacheDir)
 	if err != nil {
 		return nil, err

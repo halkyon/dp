@@ -113,14 +113,14 @@ func containsAt(s, substr string, start int) bool {
 }
 
 func ServersResponse(variables map[string]any) map[string]any {
-	servers, _, err := loadTestData()
+	servers, _, err := LoadTestData()
 	if err != nil {
 		return map[string]any{"errors": []map[string]string{{"message": err.Error()}}}
 	}
 
 	if input, ok := variables["input"].(map[string]any); ok {
 		if filter, ok := input["filter"].(map[string]any); ok {
-			servers = filterServers(servers, filter)
+			servers = FilterServers(servers, filter)
 		}
 	}
 
@@ -178,8 +178,8 @@ func ServersResponse(variables map[string]any) map[string]any {
 	}
 }
 
-func filterServers(servers []serverEntry, filter map[string]any) []serverEntry {
-	var filtered []serverEntry
+func FilterServers(servers []Entry, filter map[string]any) []Entry {
+	var filtered []Entry
 
 	for _, s := range servers {
 		match := true
@@ -221,7 +221,7 @@ func containsAny(list []any, value string) bool {
 }
 
 func LocationsResponse() []map[string]any {
-	_, locations, err := loadTestData()
+	_, locations, err := LoadTestData()
 	if err != nil {
 		return nil
 	}

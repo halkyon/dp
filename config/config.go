@@ -19,7 +19,6 @@ type Config struct {
 	APIKey         string
 	Output         string
 	APIURL         string
-	TestAPI        bool
 	AliasesCache   time.Duration
 	LocationsCache time.Duration
 	RegionsCache   time.Duration
@@ -60,12 +59,6 @@ func Load(opts ...ConfigOption) (*Config, error) {
 		cfg.APIURL = envAPIURL
 	} else if data != nil && data["api_url"] != "" {
 		cfg.APIURL = data["api_url"]
-	}
-
-	if envTestAPI := os.Getenv("DATAPACKET_TEST_API"); envTestAPI != "" {
-		cfg.TestAPI = strings.EqualFold(envTestAPI, "true")
-	} else if data != nil {
-		cfg.TestAPI = strings.EqualFold(data["test_api"], "true")
 	}
 
 	if envAliases := os.Getenv("DATAPACKET_ALIASES_CACHE"); envAliases != "" {

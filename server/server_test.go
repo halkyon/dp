@@ -4,28 +4,16 @@ import (
 	"context"
 	"testing"
 
-	"github.com/halkyon/dp/api"
 	"github.com/halkyon/dp/testapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestServer_List(t *testing.T) {
-	srv, err := testapi.NewServer()
-	require.NoError(t, err)
-
-	go func() {
-		_ = srv.Run(t.Context())
-	}()
-
-	url := "http://" + srv.Addr()
-
-	client, err := api.NewClient("test-key")
-	require.NoError(t, err)
-	client.SetBaseURL(url)
+	var mq testapi.MockQuerier
 
 	t.Run("List servers", func(t *testing.T) {
-		servers, err := List(context.Background(), client)
+		servers, err := List(context.Background(), &mq)
 		require.NoError(t, err)
 		assert.Len(t, servers, 3)
 
@@ -67,49 +55,49 @@ func TestServer_List(t *testing.T) {
 	})
 
 	t.Run("Filter by location and power", func(t *testing.T) {
-		servers, err := List(context.Background(), client, WithLocation("Amsterdam"), WithPower("ON"))
+		servers, err := List(context.Background(), &mq, WithLocation("Amsterdam"), WithPower("ON"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-12345", servers[0].Name)
 	})
 
 	t.Run("Filter by power OFF", func(t *testing.T) {
-		servers, err := List(context.Background(), client, WithPower("OFF"))
+		servers, err := List(context.Background(), &mq, WithPower("OFF"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-11111", servers[0].Name)
 	})
 
 	t.Run("Filter by region", func(t *testing.T) {
-		servers, err := List(context.Background(), client, WithRegion("EU"))
+		servers, err := List(context.Background(), &mq, WithRegion("EU"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-12345", servers[0].Name)
 	})
 
 	t.Run("Filter by status", func(t *testing.T) {
-		servers, err := List(context.Background(), client, WithStatus("PROVISIONING"))
+		servers, err := List(context.Background(), &mq, WithStatus("PROVISIONING"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-11111", servers[0].Name)
 	})
 
 	t.Run("Filter by name", func(t *testing.T) {
-		servers, err := List(context.Background(), client, WithName("DP-67890"))
+		servers, err := List(context.Background(), &mq, WithName("DP-67890"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-67890", servers[0].Name)
 	})
 
 	t.Run("Filter by alias", func(t *testing.T) {
-		servers, err := List(context.Background(), client, WithAlias("test-server-1"))
+		servers, err := List(context.Background(), &mq, WithAlias("test-server-1"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-12345", servers[0].Name)
 	})
 
 	t.Run("Filter by region and power", func(t *testing.T) {
-		servers, err := List(context.Background(), client, WithRegion("NA"), WithPower("ON"))
+		servers, err := List(context.Background(), &mq, WithRegion("NA"), WithPower("ON"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-67890", servers[0].Name)

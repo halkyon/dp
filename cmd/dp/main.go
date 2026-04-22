@@ -19,7 +19,6 @@ import (
 	"github.com/halkyon/dp/filters"
 	"github.com/halkyon/dp/server"
 	"github.com/halkyon/dp/ssh"
-	"github.com/halkyon/dp/testapi"
 )
 
 var version = ""
@@ -36,7 +35,6 @@ var flagStatus = new(stringSlice)
 var flagPower = new(stringSlice)
 var flagTag = new(stringSlice)
 var flagUser = new(stringSlice)
-var flagTestAPI bool
 
 type stringSlice []string
 
@@ -74,7 +72,6 @@ func init() {
 	flag.Var(flagTag, "tag", "Filter by tag (repeatable)")
 
 	flag.Var(flagUser, "user", "SSH user (for ssh command)")
-	flag.BoolVar(&flagTestAPI, "test-api", false, "Use test API server")
 }
 
 func main() {
@@ -430,33 +427,23 @@ func printCSV(w *csv.Writer, servers []server.Server, wide bool, queryFields []s
 	return ""
 }
 
-func getClient(ctx context.Context, cfg *config.Config) (*api.Client, error) {
+func getClient(cfg *config.Config) (api.Querier, error) {
 	apiKey := cfg.APIKey
 	if apiKey == "" {
-		apiKey = "test-key"
+		return nil, api.ErrMissingAPIKey
 	}
 	client, err := api.NewClient(apiKey)
 	if err != nil {
 		return nil, err
 	}
-	if flagTestAPI || cfg.TestAPI {
-		srv, err := testapi.NewServer()
-		if err != nil {
-			return nil, err
-		}
-		go func() {
-			_ = srv.Run(ctx)
-		}()
-		url := "http://" + srv.Addr()
-		client.SetBaseURL(url)
-	} else if cfg.APIURL != "" {
+	if cfg.APIURL != "" {
 		client.SetBaseURL(cfg.APIURL)
 	}
 	return client, nil
 }
 
 func runShow(ctx context.Context, outputFormat string, outputWide bool, queryFields []string, opts server.Options, cfg *config.Config) error {
-	client, err := getClient(ctx, cfg)
+	client, err := getClient(cfg)
 	if err != nil {
 		return err
 	}
@@ -504,7 +491,7 @@ func runShow(ctx context.Context, outputFormat string, outputWide bool, queryFie
 }
 
 func runSSH(ctx context.Context, opts server.Options, sshUser string, args []string, verbose bool, cfg *config.Config) error {
-	client, err := getClient(ctx, cfg)
+	client, err := getClient(cfg)
 	if err != nil {
 		return err
 	}
@@ -518,7 +505,7 @@ func runSSH(ctx context.Context, opts server.Options, sshUser string, args []str
 }
 
 func runFilter(ctx context.Context, filterType string, cfg *config.Config) error {
-	client, err := getClient(ctx, cfg)
+	client, err := getClient(cfg)
 	if err != nil {
 		return err
 	}

@@ -2,116 +2,115 @@ package testapi
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
-
-	"gopkg.in/yaml.v3"
 )
 
-//go:embed testdata/servers.yml
+//go:embed testdata/servers.json
 var serversData []byte
 
-//go:embed testdata/locations.yml
+//go:embed testdata/locations.json
 var locationsData []byte
 
-type serverEntry struct {
-	Name        string `yaml:"name"`
-	Alias       string `yaml:"alias"`
-	Hostname    string `yaml:"hostname"`
-	Uptime      int    `yaml:"uptime"`
-	StatusV2    string `yaml:"statusV2"`
-	PowerStatus string `yaml:"powerStatus"`
+type Entry struct {
+	Name        string `json:"name"`
+	Alias       string `json:"alias"`
+	Hostname    string `json:"hostname"`
+	Uptime      int    `json:"uptime"`
+	StatusV2    string `json:"statusV2"`
+	PowerStatus string `json:"powerStatus"`
 	Location    struct {
-		Name   string `yaml:"name"`
-		Region string `yaml:"region"`
-	} `yaml:"location"`
+		Name   string `json:"name"`
+		Region string `json:"region"`
+	} `json:"location"`
 	System struct {
 		OperatingSystem struct {
-			Name string `yaml:"name"`
-		} `yaml:"operatingSystem"`
-		Raid string `yaml:"raid"`
-	} `yaml:"system"`
+			Name string `json:"name"`
+		} `json:"operatingSystem"`
+		Raid string `json:"raid"`
+	} `json:"system"`
 	Hardware struct {
-		CPUs    []cpuInfo     `yaml:"cpus"`
-		Storage []storageInfo `yaml:"storage"`
-		Rams    []ramInfo     `yaml:"rams"`
-	} `yaml:"hardware"`
+		CPUs    []CPUInfo     `json:"cpus"`
+		Storage []StorageInfo `json:"storage"`
+		Rams    []RAMInfo     `json:"rams"`
+	} `json:"hardware"`
 	Network struct {
-		IPAddresses        []ipAddress `yaml:"ipAddresses"`
-		UplinkCapacity     int         `yaml:"uplinkCapacity"`
-		HasBGP             bool        `yaml:"hasBgp"`
-		HasLinkAggregation bool        `yaml:"hasLinkAggregation"`
-		DDOSShieldLevel    string      `yaml:"ddosShieldLevel"`
-		IPMI               ipmiInfo    `yaml:"ipmi"`
-	} `yaml:"network"`
+		IPAddresses        []IPAddress `json:"ipAddresses"`
+		UplinkCapacity     int         `json:"uplinkCapacity"`
+		HasBGP             bool        `json:"hasBgp"`
+		HasLinkAggregation bool        `json:"hasLinkAggregation"`
+		DDOSShieldLevel    string      `json:"ddosShieldLevel"`
+		IPMI               IPMIInfo    `json:"ipmi"`
+	} `json:"network"`
 	TrafficPlan struct {
-		Name      string  `yaml:"name"`
-		Type      string  `yaml:"type"`
-		Bandwidth float64 `yaml:"bandwidth"`
-	} `yaml:"trafficPlan"`
+		Name      string  `json:"name"`
+		Type      string  `json:"type"`
+		Bandwidth float64 `json:"bandwidth"`
+	} `json:"trafficPlan"`
 	Billing struct {
 		SubscriptionItem struct {
-			Price                  float64 `yaml:"price"`
-			Currency               string  `yaml:"currency"`
+			Price                  float64 `json:"price"`
+			Currency               string  `json:"currency"`
 			SubscriptionItemDetail struct {
 				Server struct {
-					Name string `yaml:"name"`
-				} `yaml:"server"`
-			} `yaml:"subscriptionItemDetail"`
-		} `yaml:"subscriptionItem"`
-	} `yaml:"billing"`
-	Tags []tagInfo `yaml:"tags"`
+					Name string `json:"name"`
+				} `json:"server"`
+			} `json:"subscriptionItemDetail"`
+		} `json:"subscriptionItem"`
+	} `json:"billing"`
+	Tags []TagInfo `json:"tags"`
 }
 
-type cpuInfo struct {
-	Name  string `yaml:"name"`
-	Cores int    `yaml:"cores"`
+type CPUInfo struct {
+	Name  string `json:"name"`
+	Cores int    `json:"cores"`
 }
 
-type storageInfo struct {
-	Size int    `yaml:"size"`
-	Type string `yaml:"type"`
+type StorageInfo struct {
+	Size int    `json:"size"`
+	Type string `json:"type"`
 }
 
-type ramInfo struct {
-	Size int `yaml:"size"`
+type RAMInfo struct {
+	Size int `json:"size"`
 }
 
-type ipAddress struct {
-	IP          string `yaml:"ip"`
-	IsPrimary   bool   `yaml:"isPrimary"`
-	Type        string `yaml:"type"`
-	IsBgpPrefix bool   `yaml:"isBgpPrefix"`
+type IPAddress struct {
+	IP          string `json:"ip"`
+	IsPrimary   bool   `json:"isPrimary"`
+	Type        string `json:"type"`
+	IsBgpPrefix bool   `json:"isBgpPrefix"`
 }
 
-type ipmiInfo struct {
-	IP       string `yaml:"ip"`
-	Username string `yaml:"username"`
+type IPMIInfo struct {
+	IP       string `json:"ip"`
+	Username string `json:"username"`
 }
 
-type tagInfo struct {
-	Key   string `yaml:"key"`
-	Value string `yaml:"value"`
+type TagInfo struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 type locationEntry struct {
-	Name   string `yaml:"name"`
-	Region string `yaml:"region"`
+	Name   string `json:"name"`
+	Region string `json:"region"`
 }
 
 type serversResponse struct {
-	Entries []serverEntry `yaml:"entries"`
+	Entries []Entry `json:"entries"`
 }
 
 type locationsResponse []locationEntry
 
-func loadTestData() ([]serverEntry, []locationEntry, error) {
+func LoadTestData() ([]Entry, []locationEntry, error) {
 	var servers serversResponse
-	if err := yaml.Unmarshal(serversData, &servers); err != nil {
+	if err := json.Unmarshal(serversData, &servers); err != nil {
 		return nil, nil, fmt.Errorf("unmarshaling servers: %w", err)
 	}
 
 	var locations locationsResponse
-	if err := yaml.Unmarshal(locationsData, &locations); err != nil {
+	if err := json.Unmarshal(locationsData, &locations); err != nil {
 		return nil, nil, fmt.Errorf("unmarshaling locations: %w", err)
 	}
 

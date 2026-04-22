@@ -118,13 +118,13 @@ func (o Options) ToOpts() []Option {
 	return opts
 }
 
-func List(ctx context.Context, client *api.Client, opts ...Option) ([]Server, error) {
+func List(ctx context.Context, client api.Querier, opts ...Option) ([]Server, error) {
 	var options Options
 	for _, o := range opts {
 		o(&options)
 	}
 
-	var result []serverNode
+	var result []node
 
 	pageIndex := 0
 	pageSize := 50
@@ -197,7 +197,7 @@ func List(ctx context.Context, client *api.Client, opts ...Option) ([]Server, er
 	return servers, nil
 }
 
-type serverNode struct {
+type node struct {
 	Name        string          `json:"name"`
 	Alias       string          `json:"alias"`
 	Hostname    string          `json:"hostname"`
@@ -260,10 +260,12 @@ type subscriptionItem struct {
 	SubscriptionItemDetail *subscriptionItemDetail `json:"subscriptionItemDetail"`
 }
 
+type serverDetail struct {
+	Name string `json:"name"`
+}
+
 type subscriptionItemDetail struct {
-	Server *struct {
-		Name string `json:"name"`
-	} `json:"server"`
+	Server *serverDetail `json:"server"`
 }
 
 type systemInfo struct {
@@ -297,10 +299,10 @@ type operatingSystemInfo struct {
 
 type serversData struct {
 	Servers struct {
-		EntriesTotalCount int          `json:"entriesTotalCount"`
-		PageCount         int          `json:"pageCount"`
-		IsLastPage        bool         `json:"isLastPage"`
-		Entries           []serverNode `json:"entries"`
+		EntriesTotalCount int    `json:"entriesTotalCount"`
+		PageCount         int    `json:"pageCount"`
+		IsLastPage        bool   `json:"isLastPage"`
+		Entries           []node `json:"entries"`
 	} `json:"servers"`
 }
 
@@ -375,7 +377,7 @@ const serversQuery = `query($input: PaginatedServersInput) {
 	}
 }`
 
-func convertServers(items []serverNode) []Server {
+func convertServers(items []node) []Server {
 	servers := make([]Server, len(items))
 
 	for i, srv := range items {

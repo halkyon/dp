@@ -11,10 +11,10 @@ import (
 
 type Regions struct {
 	cache  *cache.Cache[[]string]
-	client *api.Client
+	client api.Querier
 }
 
-func NewRegions(client *api.Client, cacheDuration time.Duration, cacheDir string) (*Regions, error) {
+func NewRegions(client api.Querier, cacheDuration time.Duration, cacheDir string) (*Regions, error) {
 	c, err := cache.New[[]string]("regions", cacheDuration, cacheDir)
 	if err != nil {
 		return nil, err
