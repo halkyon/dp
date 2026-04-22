@@ -1,9 +1,7 @@
 package filters
 
 import (
-	"context"
 	"testing"
-	"time"
 
 	"github.com/halkyon/dp/testapi"
 	"github.com/stretchr/testify/assert"
@@ -13,18 +11,9 @@ import (
 func TestAliases_Get(t *testing.T) {
 	var mq testapi.MockQuerier
 
-	cache, err := NewAliases(&mq, time.Hour, t.TempDir())
+	aliases := NewAliases(&mq)
+
+	result, err := aliases.Get(t.Context())
 	require.NoError(t, err)
-
-	t.Run("First call (cache miss)", func(t *testing.T) {
-		aliases, err := cache.Get(context.Background())
-		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"test-server-1", "test-server-2"}, aliases)
-	})
-
-	t.Run("Second call (cache hit)", func(t *testing.T) {
-		aliases, err := cache.Get(context.Background())
-		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"test-server-1", "test-server-2"}, aliases)
-	})
+	assert.ElementsMatch(t, []string{"test-server-1", "test-server-2"}, result)
 }

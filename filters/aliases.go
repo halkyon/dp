@@ -2,49 +2,71 @@ package filters
 
 import (
 	"context"
-	"time"
 
 	"github.com/halkyon/dp/api"
-	"github.com/halkyon/dp/cache"
-	"github.com/halkyon/dp/server"
 )
 
 type Aliases struct {
-	cache  *cache.Cache[[]string]
 	client api.Querier
 }
 
-func NewAliases(client api.Querier, cacheDuration time.Duration, cacheDir string) (*Aliases, error) {
-	c, err := cache.New[[]string]("aliases", cacheDuration, cacheDir)
-	if err != nil {
-		return nil, err
-	}
+func NewAliases(client api.Querier) *Aliases {
 	return &Aliases{
-		cache:  c,
 		client: client,
-	}, nil
+	}
 }
+
+type serverAliasNode struct {
+	Alias string `json:"alias"`
+}
+
+type serverAliasesData struct {
+	Servers struct {
+		IsLastPage bool              `json:"isLastPage"`
+		Entries    []serverAliasNode `json:"entries"`
+	} `json:"servers"`
+}
+
+const serverAliasesQuery = `query($input: PaginatedServersInput) {
+	servers(input: $input) {
+		isLastPage
+		entries {
+			alias
+		}
+	}
+}`
 
 func (a *Aliases) Get(ctx context.Context) ([]string, error) {
 	var aliases []string
-	if a.cache.Get(&aliases) {
-		return aliases, nil
+
+	pageIndex := 0
+	pageSize := 50
+
+	input := map[string]any{
+		"pageIndex": pageIndex,
+		"pageSize":  pageSize,
 	}
 
-	servers, err := server.List(ctx, a.client)
-	if err != nil {
-		return nil, err
-	}
-
-	aliases = make([]string, 0, len(servers))
-	for _, srv := range servers {
-		if srv.Alias != "" {
-			aliases = append(aliases, srv.Alias)
+	for {
+		var data serverAliasesData
+		if err := a.client.Query(ctx, serverAliasesQuery, map[string]any{
+			"input": input,
+		}, &data); err != nil {
+			return nil, err
 		}
-	}
 
-	if err := a.cache.Set(aliases, 0); err != nil {
-		return nil, err
+		for _, srv := range data.Servers.Entries {
+			if srv.Alias != "" {
+				aliases = append(aliases, srv.Alias)
+			}
+		}
+
+		if data.Servers.IsLastPage {
+			break
+		}
+
+		pageIndex++
+		input["pageIndex"] = pageIndex
 	}
 
 	return aliases, nil

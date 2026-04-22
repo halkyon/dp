@@ -2,52 +2,18 @@ package filters
 
 import (
 	"context"
-	"time"
 
 	"github.com/halkyon/dp/api"
-	"github.com/halkyon/dp/cache"
 )
 
 type Locations struct {
-	cache  *cache.Cache[[]string]
 	client api.Querier
 }
 
-func NewLocations(client api.Querier, cacheDuration time.Duration, cacheDir string) (*Locations, error) {
-	c, err := cache.New[[]string]("locations", cacheDuration, cacheDir)
-	if err != nil {
-		return nil, err
-	}
+func NewLocations(client api.Querier) *Locations {
 	return &Locations{
-		cache:  c,
 		client: client,
-	}, nil
-}
-
-func (l *Locations) Get(ctx context.Context) ([]string, error) {
-	var locations []string
-	if l.cache.Get(&locations) {
-		return locations, nil
 	}
-
-	var data locationsData
-	if err := l.client.Query(ctx, locationsQuery, nil, &data); err != nil {
-		return nil, err
-	}
-
-	locations = make([]string, len(data.Locations))
-	for i, loc := range data.Locations {
-		locations[i] = loc.Name
-	}
-
-	if err := l.cache.Set(locations, 0); err != nil {
-		return nil, err
-	}
-	return locations, nil
-}
-
-func (l *Locations) Clear() error {
-	return l.cache.Clear()
 }
 
 type locationNode struct {
@@ -65,3 +31,17 @@ const locationsQuery = `query {
 		region
 	}
 }`
+
+func (l *Locations) Get(ctx context.Context) ([]string, error) {
+	var data locationsData
+	if err := l.client.Query(ctx, locationsQuery, nil, &data); err != nil {
+		return nil, err
+	}
+
+	locations := make([]string, len(data.Locations))
+	for i, loc := range data.Locations {
+		locations[i] = loc.Name
+	}
+
+	return locations, nil
+}

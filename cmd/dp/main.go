@@ -13,7 +13,10 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"time"
+
 	"github.com/halkyon/dp/api"
+	"github.com/halkyon/dp/cache"
 	"github.com/halkyon/dp/completion"
 	"github.com/halkyon/dp/config"
 	"github.com/halkyon/dp/filters"
@@ -516,23 +519,11 @@ func runFilter(ctx context.Context, filterType string, cfg *config.Config) error
 
 	switch filterType {
 	case "aliases":
-		cache, err := filters.NewAliases(client, cfg.AliasesCache, "")
-		if err != nil {
-			return err
-		}
-		filter = cache
+		filter = filters.NewAliases(client)
 	case "locations":
-		cache, err := filters.NewLocations(client, cfg.LocationsCache, "")
-		if err != nil {
-			return err
-		}
-		filter = cache
+		filter = filters.NewLocations(client)
 	case "regions":
-		cache, err := filters.NewRegions(client, cfg.RegionsCache, "")
-		if err != nil {
-			return err
-		}
-		filter = cache
+		filter = filters.NewRegions(client)
 	case "power":
 		filter = filters.NewPower()
 	case "status":
@@ -541,7 +532,34 @@ func runFilter(ctx context.Context, filterType string, cfg *config.Config) error
 		return fmt.Errorf("unknown filter type: %s", filterType)
 	}
 
-	list, err := filter.Get(ctx)
+	var list []string
+	if filterType == "power" || filterType == "status" {
+		list, err = filter.Get(ctx)
+	} else {
+		var cacheDuration time.Duration
+		switch filterType {
+		case "aliases":
+			cacheDuration = cfg.AliasesCache
+		case "locations":
+			cacheDuration = cfg.LocationsCache
+		case "regions":
+			cacheDuration = cfg.RegionsCache
+		}
+
+		c, err := cache.New[[]string](filterType, cacheDuration, "")
+		if err != nil {
+			return err
+		}
+		if !c.Get(&list) {
+			list, err = filter.Get(ctx)
+			if err != nil {
+				return err
+			}
+			if err = c.Set(list, 0); err != nil {
+				return err
+			}
+		}
+	}
 	if err != nil {
 		return err
 	}
