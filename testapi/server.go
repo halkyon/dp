@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -47,15 +48,16 @@ func (s *Server) Run(ctx context.Context) error {
 	})
 	g.Go(func() error {
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(ctx, defaultServerShutdownTimeout)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), defaultServerShutdownTimeout)
 		defer cancel()
-		return s.srv.Shutdown(shutdownCtx)
+		return s.srv.Shutdown(shutdownCtx) //nolint:contextcheck // parent ctx is already canceled, Background is intentional
 	})
 	return g.Wait()
 }
 
 func handleGraphQL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	defer r.Body.Close() //nolint:errcheck // standard defer pattern
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -88,28 +90,15 @@ func handleGraphQL(w http.ResponseWriter, r *http.Request) {
 
 func processQuery(query string, variables map[string]any) map[string]any {
 	switch {
-	case contains(query, "servers"):
+	case strings.Contains(query, "servers"):
 		return map[string]any{"data": map[string]any{"servers": queryServers(variables)}}
-	case contains(query, "locations"):
+	case strings.Contains(query, "locations"):
 		return map[string]any{"data": map[string]any{"locations": queryLocations()}}
-	case contains(query, "regions"):
+	case strings.Contains(query, "regions"):
 		return map[string]any{"data": map[string]any{"locations": queryLocations()}}
 	default:
 		return map[string]any{"errors": []map[string]string{{"message": "unknown query"}}}
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsAt(s, substr, 0))
-}
-
-func containsAt(s, substr string, start int) bool {
-	for i := start; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 func queryServers(variables map[string]any) map[string]any {
@@ -202,6 +191,9 @@ func filterServers(servers []entry, filter map[string]any) []entry {
 		if powerIn, ok := filter["powerStatus_in"].([]any); ok {
 			match = match && containsAny(powerIn, s.PowerStatus)
 		}
+		if tagsIn, ok := filter["tags_in"].([]any); ok {
+			match = match && hasAnyTag(s.Tags, tagsIn)
+		}
 
 		if match {
 			filtered = append(filtered, s)
@@ -209,6 +201,23 @@ func filterServers(servers []entry, filter map[string]any) []entry {
 	}
 
 	return filtered
+}
+
+func hasAnyTag(serverTags []TagInfo, filterTags []any) bool {
+	for _, ft := range filterTags {
+		filterTag, ok := ft.(map[string]any)
+		if !ok {
+			continue
+		}
+		filterKey, _ := filterTag["key"].(string)
+		filterVal, _ := filterTag["value"].(string)
+		for _, st := range serverTags {
+			if st.Key == filterKey && st.Value == filterVal {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func containsAny(list []any, value string) bool {

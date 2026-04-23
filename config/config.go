@@ -132,8 +132,8 @@ func (c *Config) configPaths() (config, credentials string) {
 	if c.configDir != "" {
 		return c.configDir + "/config", c.configDir + "/credentials"
 	}
-	home := os.Getenv("HOME")
-	if home == "" {
+	home, err := os.UserHomeDir()
+	if err != nil {
 		return "", ""
 	}
 	return home + defaultConfigDir + "/config", home + defaultConfigDir + "/credentials"

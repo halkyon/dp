@@ -46,7 +46,7 @@ _dp() {
     _init_completion || return
 
     if [[ $cword -eq 1 ]]; then
-        COMPREPLY=($(compgen -W "servers ssh completion aliases locations regions power status" -- "$cur"))
+        COMPREPLY=($(compgen -W "servers ssh completion aliases locations regions power status fields" -- "$cur"))
     else
         local prev_word="$prev"
         if [[ "$prev" == --alias=* ]]; then
@@ -69,6 +69,8 @@ _dp() {
             prev_word="--power"
         elif [[ "$prev" == --status ]]; then
             prev_word="--status"
+        elif [[ "$prev" == --query ]]; then
+            prev_word="--query"
         elif [[ "$prev" == -n* ]]; then
             prev_word="--name"
         elif [[ "$prev" == -a* ]]; then
@@ -83,6 +85,8 @@ _dp() {
             prev_word="--power"
         elif [[ "$prev" == -t* ]]; then
             prev_word="--tag"
+        elif [[ "$prev" == -q* ]]; then
+            prev_word="--query"
         elif [[ "$prev" == -n ]]; then
             prev_word="--name"
         elif [[ "$prev" == -a ]]; then
@@ -156,6 +160,12 @@ _dp() {
                     COMPREPLY=($(compgen -W "${tags[*]}" -- "$cur"))
                 fi
                 ;;
+            --query)
+                local -a query_fields
+                if query_fields=($({{.Name}} fields 2>/dev/null)); then
+                    COMPREPLY=($(compgen -W "${query_fields[*]}" -- "$cur"))
+                fi
+                ;;
         esac
     fi
 }
@@ -175,6 +185,7 @@ _dp() {
         "regions:List all available regions"
         "power:List all power statuses"
         "status:List all server statuses"
+        "fields:List all queryable server fields"
     )
 
     if (( CURRENT == 2 )); then
@@ -207,6 +218,8 @@ _dp() {
             prev_word="--power"
         elif [[ "$prev_word" == -t* ]]; then
             prev_word="--tag"
+        elif [[ "$prev_word" == -q* ]]; then
+            prev_word="--query"
         elif [[ "$prev_word" == -n ]]; then
             prev_word="--name"
         elif [[ "$prev_word" == -a ]]; then
@@ -262,6 +275,11 @@ _dp() {
                 local -a tags
                 tags=($({{.Name}} servers --tag - 2>/dev/null | jq -r '.[].Tags[]' 2>/dev/null))
                 _describe "tag" tags
+                ;;
+            --query)
+                local -a query_fields
+                query_fields=($({{.Name}} fields 2>/dev/null))
+                _describe "query field" query_fields
                 ;;
             *)
                 local -a aliases
@@ -363,6 +381,9 @@ function __fish_{{.Name}}_complete_filter
     else if string match -q '-t*' "$prev"
         set filter_type "tag"
         set word_to_complete (string replace '-t' '' "$cur")
+    else if string match -q '-q*' "$prev"
+        set filter_type "query"
+        set word_to_complete (string replace '-q' '' "$cur")
     else if test "$cur" = "-n"
         set filter_type "name"
     else if test "$cur" = "-a"
@@ -377,6 +398,8 @@ function __fish_{{.Name}}_complete_filter
         set filter_type "power"
     else if test "$cur" = "-t"
         set filter_type "tag"
+    else if test "$cur" = "-q"
+        set filter_type "query"
     end
 
     switch "$filter_type"
@@ -394,6 +417,8 @@ function __fish_{{.Name}}_complete_filter
             {{.Name}} servers --name - 2>/dev/null | jq -r '.[].Name' | string match "$word_to_complete*"
         case "tag"
             {{.Name}} servers --tag - 2>/dev/null | jq -r '.[].Tags[]' 2>/dev/null | string match "$word_to_complete*"
+        case "query"
+            {{.Name}} fields 2>/dev/null | string match "$word_to_complete*"
     end
 end
 
@@ -406,6 +431,7 @@ complete -c {{.Name}} -a 'locations' -d 'List all available locations'
 complete -c {{.Name}} -a 'regions' -d 'List all available regions'
 complete -c {{.Name}} -a 'power' -d 'List all power statuses'
 complete -c {{.Name}} -a 'status' -d 'List all server statuses'
+complete -c {{.Name}} -a 'fields' -d 'List all queryable server fields'
 complete -c {{.Name}} -f -a '(__fish_{{.Name}}_complete_alias)'
 complete -c {{.Name}} -f -a '(__fish_{{.Name}}_complete_filter)'
 `))

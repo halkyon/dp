@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"reflect"
 	"runtime/debug"
+	"strconv"
 	"strings"
 
 	"time"
@@ -97,7 +97,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  locations    List all available locations\n")
 		fmt.Fprintf(os.Stderr, "  regions      List all available regions\n")
 		fmt.Fprintf(os.Stderr, "  power        List all power statuses\n")
-		fmt.Fprintf(os.Stderr, "  status       List all server statuses\n\n")
+		fmt.Fprintf(os.Stderr, "  status       List all server statuses\n")
+		fmt.Fprintf(os.Stderr, "  fields       List all queryable server fields\n\n")
 
 		switch cmd {
 		case "servers":
@@ -163,7 +164,27 @@ func main() {
 	}
 }
 
+func validateCmdFlags(cmd string) error {
+	if cmd != "servers" {
+		hasFilter := len(*flagName) > 0 || len(*flagAlias) > 0 || len(*flagLocation) > 0 ||
+			len(*flagRegion) > 0 || len(*flagStatus) > 0 || len(*flagPower) > 0 ||
+			len(*flagTag) > 0 || len(*queryFields) > 0 || outputFormatFlag != "" ||
+			outputWide || flag.Lookup("output-wide").Value.String() == "true"
+		if hasFilter {
+			return errors.New("output and filter flags are only valid for the servers command")
+		}
+	}
+	if cmd != "ssh" && len(*flagUser) > 0 {
+		return errors.New("flag --user is only valid for the ssh command")
+	}
+	return nil
+}
+
 func run(cmd string, args []string, opts server.Options) error {
+	if err := validateCmdFlags(cmd); err != nil {
+		return err
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -209,6 +230,9 @@ func run(cmd string, args []string, opts server.Options) error {
 		return runFilter(ctx, "power", cfg)
 	case "status":
 		return runFilter(ctx, "status", cfg)
+	case "fields":
+		runFields()
+		return nil
 	case "version", "-V", "--version":
 		fmt.Println(getVersion())
 		return nil
@@ -239,37 +263,6 @@ func getVersion() string {
 	}
 
 	return fmt.Sprintf("%s (%s)", version, revision)
-}
-
-func filterByFields(servers []server.Server, fields []string) []server.Server {
-	fieldSet := make(map[string]bool)
-	for _, f := range fields {
-		fieldSet[strings.ToLower(f)] = true
-	}
-
-	var filtered []server.Server
-	for _, s := range servers {
-		filtered = append(filtered, filterServerFields(s, fieldSet))
-	}
-	return filtered
-}
-
-func filterServerFields(s server.Server, fields map[string]bool) server.Server {
-	if len(fields) == 0 {
-		return s
-	}
-
-	var result server.Server
-	typ := reflect.TypeFor[server.Server]()
-	val := reflect.ValueOf(&result).Elem()
-
-	for i := 0; i < typ.NumField(); i++ {
-		field := typ.Field(i)
-		if fields[strings.ToLower(field.Name)] {
-			val.Field(i).Set(reflect.ValueOf(s).Field(i))
-		}
-	}
-	return result
 }
 
 func printTable(servers []server.Server, wide bool, queryFields []string) string {
@@ -330,13 +323,8 @@ func printTable(servers []server.Server, wide bool, queryFields []string) string
 	}
 	format := formatBuilder.String() + "\n"
 
-	toAny := func(s []string) []any {
-		result := make([]any, len(s))
-		for i, v := range s {
-			result[i] = v
-		}
-		return result
-	}
+	// Pre-allocate a reusable []any slice to avoid per-row allocations.
+	fmtArgs := make([]any, len(cols))
 
 	var b strings.Builder
 
@@ -346,14 +334,56 @@ func printTable(servers []server.Server, wide bool, queryFields []string) string
 		header[i] = c.displayName
 		dashes[i] = strings.Repeat("-", c.width-1)
 	}
-	fmt.Fprintf(&b, format, toAny(header)...)
-	fmt.Fprintf(&b, format, toAny(dashes)...)
+	for i, v := range header {
+		fmtArgs[i] = v
+	}
+	fmt.Fprintf(&b, format, fmtArgs...)
+	for i, v := range dashes {
+		fmtArgs[i] = v
+	}
+	fmt.Fprintf(&b, format, fmtArgs...)
 
 	for _, vals := range rowValues {
-		fmt.Fprintf(&b, format, toAny(vals)...)
+		for i, v := range vals {
+			fmtArgs[i] = v
+		}
+		fmt.Fprintf(&b, format, fmtArgs...)
 	}
 
 	return b.String()
+}
+
+var queryableFields = []string{
+	"Name",
+	"Alias",
+	"Status",
+	"Power",
+	"Location",
+	"IP",
+	"OS",
+	"CPU",
+	"Memory",
+	"Price",
+	"Storage",
+	"Tags",
+	"Hostname",
+	"Uptime",
+	"Currency",
+	"BillingPeriod",
+	"Uplink",
+	"RAID",
+	"IPMIURL",
+	"IPMIUser",
+	"BGP",
+	"DDOS",
+	"LinkAggregation",
+	"DeviceType",
+}
+
+func runFields() {
+	for _, f := range queryableFields {
+		fmt.Println(f)
+	}
 }
 
 func getFieldValue(s server.Server, field string) string {
@@ -380,12 +410,42 @@ func getFieldValue(s server.Server, field string) string {
 		return fmt.Sprintf("%.2f", s.Price)
 	case "storage":
 		return s.Storage
+	case "tags":
+		return strings.Join(s.Tags, ", ")
+	case "iptype":
+		return s.IPType
+	case "additionalips":
+		return strings.Join(s.AdditionalIPs, ", ")
+	case "hostname":
+		return s.Hostname
+	case "uptime":
+		return s.Uptime
+	case "currency":
+		return s.Currency
+	case "billingperiod":
+		return s.BillingPeriod
+	case "uplink":
+		return s.Uplink
+	case "raid":
+		return s.RAID
+	case "ipmiurl":
+		return s.IPMIURL
+	case "ipmiuser":
+		return s.IPMIUser
+	case "bgp":
+		return strconv.FormatBool(s.BGP)
+	case "ddos":
+		return s.DDOS
+	case "linkaggregation":
+		return strconv.FormatBool(s.LinkAggregation)
+	case "devicetype":
+		return s.DeviceType
 	default:
 		return ""
 	}
 }
 
-func printCSV(w *csv.Writer, servers []server.Server, wide bool, queryFields []string) string {
+func printCSV(w *csv.Writer, servers []server.Server, wide bool, queryFields []string) error {
 	var fields []string
 	switch {
 	case len(queryFields) > 0:
@@ -397,7 +457,7 @@ func printCSV(w *csv.Writer, servers []server.Server, wide bool, queryFields []s
 	}
 
 	if err := w.Write(fields); err != nil {
-		return err.Error()
+		return err
 	}
 
 	for _, s := range servers {
@@ -406,15 +466,12 @@ func printCSV(w *csv.Writer, servers []server.Server, wide bool, queryFields []s
 			record = append(record, getFieldValue(s, f))
 		}
 		if err := w.Write(record); err != nil {
-			return err.Error()
+			return err
 		}
 	}
 
 	w.Flush()
-	if err := w.Error(); err != nil {
-		return err.Error()
-	}
-	return ""
+	return w.Error()
 }
 
 func getClient(cfg *config.Config) (api.Querier, error) {
@@ -443,10 +500,6 @@ func runShow(ctx context.Context, outputFormat string, outputWide bool, queryFie
 		return err
 	}
 
-	if len(queryFields) > 0 {
-		servers = filterByFields(servers, queryFields)
-	}
-
 	switch outputFormat {
 	case "json":
 		var encoded []byte
@@ -472,7 +525,9 @@ func runShow(ctx context.Context, outputFormat string, outputWide bool, queryFie
 		fmt.Println(printTable(servers, outputWide, queryFields))
 	case "csv":
 		w := csv.NewWriter(os.Stdout)
-		fmt.Println(printCSV(w, servers, outputWide, queryFields))
+		if err := printCSV(w, servers, outputWide, queryFields); err != nil {
+			return fmt.Errorf("writing CSV: %w", err)
+		}
 	default:
 		return fmt.Errorf("unknown output format: %s (use json, table, or csv)", outputFormat)
 	}
@@ -484,6 +539,16 @@ func runSSH(ctx context.Context, opts server.Options, sshUser string, args []str
 	client, err := getClient(cfg)
 	if err != nil {
 		return err
+	}
+
+	if len(args) > 0 {
+		alias := args[0]
+		if strings.Contains(alias, "@") {
+			alias = strings.SplitN(alias, "@", 2)[1]
+		}
+		if alias != "" {
+			opts.Alias = append(opts.Alias, alias)
+		}
 	}
 
 	servers, err := server.List(ctx, client, opts.ToOpts()...)

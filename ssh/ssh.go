@@ -67,8 +67,8 @@ func Run(ctx context.Context, servers []server.Server, username string, args []s
 
 func defaultUsername(os string) string {
 	os = strings.ToLower(os)
-	if strings.Contains(os, "self") || os == "" {
-		return "ubuntu"
+	if strings.Contains(os, "windows") {
+		return "admin"
 	}
 	return "root"
 }

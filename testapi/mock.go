@@ -45,13 +45,24 @@ func (m *MockQuerier) Query(ctx context.Context, query string, variables map[str
 		if filter, ok := input["filter"].(map[string]any); ok {
 			convertedFilter := make(map[string]any)
 			for k, v := range filter {
-				if strSlice, ok := v.([]string); ok {
-					anySlice := make([]any, len(strSlice))
-					for i, s := range strSlice {
+				switch val := v.(type) {
+				case []string:
+					anySlice := make([]any, len(val))
+					for i, s := range val {
 						anySlice[i] = s
 					}
 					convertedFilter[k] = anySlice
-				} else {
+				case []map[string]string:
+					anySlice := make([]any, len(val))
+					for i, m := range val {
+						anyMap := make(map[string]any, len(m))
+						for mk, mv := range m {
+							anyMap[mk] = mv
+						}
+						anySlice[i] = anyMap
+					}
+					convertedFilter[k] = anySlice
+				default:
 					convertedFilter[k] = v
 				}
 			}

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 var (
@@ -27,7 +28,7 @@ func NewClient(apiKey string) (*Client, error) {
 		return nil, ErrMissingAPIKey
 	}
 	return &Client{
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: 30 * time.Second},
 		apiKey:     apiKey,
 		baseURL:    "https://api.datapacket.com/v0/graphql",
 	}, nil
@@ -63,14 +64,15 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]a
 	if err != nil {
 		return fmt.Errorf("making request: %w", err)
 	}
+	defer resp.Body.Close() //nolint:errcheck // standard defer pattern
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("reading response body: %w", err)
 	}
 
-	if err := resp.Body.Close(); err != nil {
-		return fmt.Errorf("closing response body: %w", err)
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
 
 	var gqlResp struct {

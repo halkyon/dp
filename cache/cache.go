@@ -8,20 +8,22 @@ import (
 )
 
 type Cache[T any] struct {
-	Path     string
-	MaxAge   time.Duration
-	Duration time.Duration
+	Path   string
+	MaxAge time.Duration
 }
 
 type cacheFile[T any] struct {
-	Expiry   time.Time     `json:"expiry"`
-	Duration time.Duration `json:"duration"`
-	Data     T             `json:"data"`
+	Expiry time.Time `json:"expiry"`
+	Data   T         `json:"data"`
 }
 
 func New[T any](name string, maxAge time.Duration, cacheDir string) (*Cache[T], error) {
 	if cacheDir == "" {
-		cacheDir = filepath.Join(os.Getenv("HOME"), ".cache", "dp")
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		cacheDir = filepath.Join(home, ".cache", "dp")
 	}
 	if err := os.MkdirAll(cacheDir, 0750); err != nil {
 		return nil, err
@@ -52,11 +54,10 @@ func (c *Cache[T]) Get(data *T) bool {
 	return true
 }
 
-func (c *Cache[T]) Set(data T, duration time.Duration) error {
+func (c *Cache[T]) Set(data T, _ time.Duration) error {
 	cached := cacheFile[T]{
-		Expiry:   time.Now().Add(c.MaxAge),
-		Duration: duration,
-		Data:     data,
+		Expiry: time.Now().Add(c.MaxAge),
+		Data:   data,
 	}
 
 	contents, err := json.Marshal(cached)
@@ -68,5 +69,5 @@ func (c *Cache[T]) Set(data T, duration time.Duration) error {
 }
 
 func (c *Cache[T]) Clear() error {
-	return os.RemoveAll(c.Path)
+	return os.Remove(c.Path)
 }

@@ -87,7 +87,7 @@ func TestPrintCSV(t *testing.T) {
 	t.Run("CSV Narrow", func(t *testing.T) {
 		buf := new(bytes.Buffer)
 		w := csv.NewWriter(buf)
-		printCSV(w, servers, false, nil)
+		require.NoError(t, printCSV(w, servers, false, nil))
 
 		records, err := csv.NewReader(buf).ReadAll()
 		require.NoError(t, err)
@@ -98,7 +98,7 @@ func TestPrintCSV(t *testing.T) {
 	t.Run("CSV Wide", func(t *testing.T) {
 		buf := new(bytes.Buffer)
 		w := csv.NewWriter(buf)
-		printCSV(w, servers, true, nil)
+		require.NoError(t, printCSV(w, servers, true, nil))
 
 		records, err := csv.NewReader(buf).ReadAll()
 		require.NoError(t, err)
@@ -109,7 +109,7 @@ func TestPrintCSV(t *testing.T) {
 		buf := new(bytes.Buffer)
 		w := csv.NewWriter(buf)
 		queryFields := []string{"Name", "IP"}
-		printCSV(w, servers, false, queryFields)
+		require.NoError(t, printCSV(w, servers, false, queryFields))
 
 		records, err := csv.NewReader(buf).ReadAll()
 		require.NoError(t, err)

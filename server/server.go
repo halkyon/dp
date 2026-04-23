@@ -36,6 +36,7 @@ type Server struct {
 	DDOS            string   `json:"ddos,omitempty"`
 	LinkAggregation bool     `json:"linkAggregation,omitempty"`
 	Tags            []string `json:"tags,omitempty"`
+	DeviceType      string   `json:"deviceType,omitempty"`
 }
 
 type Options struct {
@@ -159,13 +160,12 @@ func List(ctx context.Context, client api.Querier, opts ...Option) ([]Server, er
 			var tags []map[string]string
 			for _, t := range options.Tag {
 				parts := strings.SplitN(t, "=", 2)
-				if len(parts) == 2 {
-					tags = append(tags, map[string]string{"key": parts[0], "value": parts[1]})
+				if len(parts) != 2 {
+					return nil, fmt.Errorf("invalid tag filter %q: expected key=value", t)
 				}
+				tags = append(tags, map[string]string{"key": parts[0], "value": parts[1]})
 			}
-			if len(tags) > 0 {
-				filter["tags_in"] = tags
-			}
+			filter["tags_in"] = tags
 		}
 		input["filter"] = filter
 	}
@@ -180,7 +180,7 @@ func List(ctx context.Context, client api.Querier, opts ...Option) ([]Server, er
 
 		result = append(result, data.Servers.Entries...)
 
-		if data.Servers.IsLastPage {
+		if data.Servers.IsLastPage || pageIndex >= data.Servers.PageCount-1 {
 			break
 		}
 
@@ -211,6 +211,7 @@ type node struct {
 	System      systemInfo      `json:"system"`
 	Hardware    hardwareInfo    `json:"hardware"`
 	Tags        []tagInfo       `json:"tags"`
+	DeviceType  string          `json:"deviceType"`
 }
 
 type trafficPlanInfo struct {
@@ -362,18 +363,18 @@ const serversQuery = `query($input: PaginatedServersInput) {
 				type
 				bandwidth
 			}
-			billing {
-				subscriptionItem {
-					price
-					currency
-					subscriptionItemDetail {
-						server {
-							name
-						}
+		billing {
+			subscriptionItem {
+				price
+				currency
+				subscriptionItemDetail {
+					server {
+						name
 					}
 				}
 			}
 		}
+		deviceType
 	}
 }`
 
@@ -408,8 +409,20 @@ func convertServers(items []node) []Server {
 				counts[storageKey{size: s.Size, typ: s.Type}]++
 			}
 
+			var keys []storageKey
+			for key := range counts {
+				keys = append(keys, key)
+			}
+			sort.Slice(keys, func(i, j int) bool {
+				if keys[i].typ != keys[j].typ {
+					return keys[i].typ < keys[j].typ
+				}
+				return keys[i].size < keys[j].size
+			})
+
 			var parts []string
-			for key, count := range counts {
+			for _, key := range keys {
+				count := counts[key]
 				if count == 1 {
 					parts = append(parts, fmt.Sprintf("%d GB %s", key.size, key.typ))
 				} else {
@@ -489,6 +502,7 @@ func convertServers(items []node) []Server {
 			DDOS:            srv.Network.DDOSShieldLevel,
 			LinkAggregation: srv.Network.HasLinkAggregation,
 			Tags:            tags,
+			DeviceType:      srv.DeviceType,
 		}
 	}
 
@@ -512,6 +526,7 @@ func extractIPsWithType(addresses []ipAddress) (string, string, []string) {
 	if primary == "" && len(addresses) > 0 {
 		primary = addresses[0].IP
 		ipType = addresses[0].Type
+		additional = nil
 		for _, addr := range addresses[1:] {
 			additional = append(additional, addr.IP)
 		}
