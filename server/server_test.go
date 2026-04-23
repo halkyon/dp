@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"testing"
 
 	"github.com/halkyon/dp/testapi"
@@ -9,11 +8,54 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestBuildQuery(t *testing.T) {
+	t.Run("full query when no fields specified", func(t *testing.T) {
+		q := buildQuery(nil)
+		assert.Contains(t, q, "name")
+		assert.Contains(t, q, "alias")
+		assert.Contains(t, q, "location {")
+		assert.Contains(t, q, "hardware {")
+		assert.Contains(t, q, "billing {")
+	})
+
+	t.Run("minimal query for basic fields", func(t *testing.T) {
+		q := buildQuery([]string{"Name", "Alias", "Status"})
+		assert.Contains(t, q, "name")
+		assert.Contains(t, q, "alias")
+		assert.Contains(t, q, "statusV2")
+		assert.NotContains(t, q, "location {")
+		assert.NotContains(t, q, "hardware {")
+		assert.NotContains(t, q, "billing {")
+	})
+
+	t.Run("query includes nested blocks for requested fields", func(t *testing.T) {
+		q := buildQuery([]string{"Name", "Location", "CPU", "Price"})
+		assert.Contains(t, q, "name")
+		assert.Contains(t, q, "location {")
+		assert.Contains(t, q, "hardware {")
+		assert.Contains(t, q, "billing {")
+		assert.NotContains(t, q, "system {")
+		assert.NotContains(t, q, "network {")
+	})
+
+	t.Run("IP field includes network block", func(t *testing.T) {
+		q := buildQuery([]string{"Name", "IP"})
+		assert.Contains(t, q, "network {")
+		assert.Contains(t, q, "ipAddresses")
+	})
+
+	t.Run("Tags field includes tags block", func(t *testing.T) {
+		q := buildQuery([]string{"Name", "Tags"})
+		assert.Contains(t, q, "tags {")
+		assert.NotContains(t, q, "hardware {")
+	})
+}
+
 func TestServer_List(t *testing.T) {
 	var mq testapi.MockQuerier
 
 	t.Run("List servers", func(t *testing.T) {
-		servers, err := List(context.Background(), &mq)
+		servers, err := List(t.Context(), &mq)
 		require.NoError(t, err)
 		assert.Len(t, servers, 3)
 
@@ -55,51 +97,93 @@ func TestServer_List(t *testing.T) {
 	})
 
 	t.Run("Filter by location and power", func(t *testing.T) {
-		servers, err := List(context.Background(), &mq, WithLocation("Amsterdam"), WithPower("ON"))
+		servers, err := List(t.Context(), &mq, WithLocation("Amsterdam"), WithPower("ON"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-12345", servers[0].Name)
 	})
 
 	t.Run("Filter by power OFF", func(t *testing.T) {
-		servers, err := List(context.Background(), &mq, WithPower("OFF"))
+		servers, err := List(t.Context(), &mq, WithPower("OFF"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-11111", servers[0].Name)
 	})
 
 	t.Run("Filter by region", func(t *testing.T) {
-		servers, err := List(context.Background(), &mq, WithRegion("EU"))
+		servers, err := List(t.Context(), &mq, WithRegion("EU"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-12345", servers[0].Name)
 	})
 
 	t.Run("Filter by status", func(t *testing.T) {
-		servers, err := List(context.Background(), &mq, WithStatus("PROVISIONING"))
+		servers, err := List(t.Context(), &mq, WithStatus("PROVISIONING"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-11111", servers[0].Name)
 	})
 
 	t.Run("Filter by name", func(t *testing.T) {
-		servers, err := List(context.Background(), &mq, WithName("DP-67890"))
+		servers, err := List(t.Context(), &mq, WithName("DP-67890"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-67890", servers[0].Name)
 	})
 
 	t.Run("Filter by alias", func(t *testing.T) {
-		servers, err := List(context.Background(), &mq, WithAlias("test-server-1"))
+		servers, err := List(t.Context(), &mq, WithAlias("test-server-1"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-12345", servers[0].Name)
 	})
 
 	t.Run("Filter by region and power", func(t *testing.T) {
-		servers, err := List(context.Background(), &mq, WithRegion("NA"), WithPower("ON"))
+		servers, err := List(t.Context(), &mq, WithRegion("NA"), WithPower("ON"))
 		require.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, "DP-67890", servers[0].Name)
+	})
+
+	t.Run("WithFields requests only specified data", func(t *testing.T) {
+		servers, err := List(t.Context(), &mq, WithFields("Name", "Alias", "Status"))
+		require.NoError(t, err)
+		assert.Len(t, servers, 3)
+
+		for _, s := range servers {
+			assert.NotEmpty(t, s.Name)
+			assert.NotEmpty(t, s.Status)
+			// These fields were not requested so the mock won't return them
+			assert.Empty(t, s.IP)
+			assert.Empty(t, s.Location)
+			assert.Empty(t, s.CPU)
+			assert.Empty(t, s.Memory)
+			assert.Zero(t, s.Price)
+		}
+	})
+
+	t.Run("WithFields includes nested blocks correctly", func(t *testing.T) {
+		servers, err := List(t.Context(), &mq, WithFields("Name", "IP", "Location"))
+		require.NoError(t, err)
+		require.Len(t, servers, 3)
+
+		assert.NotEmpty(t, servers[0].Name)
+		assert.NotEmpty(t, servers[0].IP)
+		assert.NotEmpty(t, servers[0].Location)
+		assert.Empty(t, servers[0].CPU)
+		assert.Empty(t, servers[0].OperatingSystem)
+	})
+
+	t.Run("WithFields combined with filters", func(t *testing.T) {
+		servers, err := List(t.Context(), &mq,
+			WithLocation("Amsterdam"),
+			WithFields("Name", "Alias", "Location"),
+		)
+		require.NoError(t, err)
+		assert.Len(t, servers, 1)
+		assert.Equal(t, "DP-12345", servers[0].Name)
+		assert.Equal(t, "test-server-1", servers[0].Alias)
+		assert.Equal(t, "Amsterdam", servers[0].Location)
+		assert.Empty(t, servers[0].IP)
 	})
 }

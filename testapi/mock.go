@@ -70,9 +70,15 @@ func (m *MockQuerier) Query(ctx context.Context, query string, variables map[str
 		}
 	}
 
+	serverResp := serversToGraphQLResponse(servers)
+	requestedFields := extractRequestedFields(query)
+	if entries, ok := serverResp["entries"].([]map[string]any); ok {
+		serverResp["entries"] = filterEntryFields(entries, requestedFields)
+	}
+
 	resp := map[string]any{
 		"data": map[string]any{
-			"servers": serversToGraphQLResponse(servers),
+			"servers": serverResp,
 		},
 	}
 

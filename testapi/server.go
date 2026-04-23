@@ -91,7 +91,7 @@ func handleGraphQL(w http.ResponseWriter, r *http.Request) {
 func processQuery(query string, variables map[string]any) map[string]any {
 	switch {
 	case strings.Contains(query, "servers"):
-		return map[string]any{"data": map[string]any{"servers": queryServers(variables)}}
+		return map[string]any{"data": map[string]any{"servers": queryServers(query, variables)}}
 	case strings.Contains(query, "locations"):
 		return map[string]any{"data": map[string]any{"locations": queryLocations()}}
 	case strings.Contains(query, "regions"):
@@ -101,7 +101,95 @@ func processQuery(query string, variables map[string]any) map[string]any {
 	}
 }
 
-func queryServers(variables map[string]any) map[string]any {
+func extractRequestedFields(query string) []string {
+	idx := strings.Index(query, "entries {")
+	if idx == -1 {
+		return nil
+	}
+	start := idx + len("entries {")
+	depth := 1
+	end := start
+	for end < len(query) && depth > 0 {
+		switch query[end] {
+		case '{':
+			depth++
+		case '}':
+			depth--
+		}
+		end++
+	}
+	if depth != 0 {
+		return nil
+	}
+
+	content := query[start : end-1]
+	var fields []string
+	var fieldSet = make(map[string]struct{})
+
+	// Track brace depth within the entries block.
+	innerDepth := 0
+	var token strings.Builder
+
+	flushToken := func() {
+		name := token.String()
+		token.Reset()
+		if name == "" {
+			return
+		}
+		// Only record tokens that are field names at the current depth.
+		// At depth 0 they are top-level scalar fields; at depth 1 they are
+		// the names of nested blocks (e.g. "location", "system").
+		if innerDepth <= 1 {
+			if _, ok := fieldSet[name]; !ok {
+				fieldSet[name] = struct{}{}
+				fields = append(fields, name)
+			}
+		}
+	}
+
+	for i := 0; i < len(content); i++ {
+		ch := content[i]
+		switch ch {
+		case '{':
+			flushToken()
+			innerDepth++
+		case '}':
+			flushToken()
+			innerDepth--
+		case ' ', '\t', '\n', '\r':
+			flushToken()
+		default:
+			token.WriteByte(ch)
+		}
+	}
+	flushToken()
+
+	return fields
+}
+
+func filterEntryFields(entries []map[string]any, fields []string) []map[string]any {
+	if len(fields) == 0 {
+		return entries
+	}
+	fieldSet := make(map[string]struct{})
+	for _, f := range fields {
+		fieldSet[f] = struct{}{}
+	}
+
+	filtered := make([]map[string]any, len(entries))
+	for i, entry := range entries {
+		newEntry := make(map[string]any)
+		for k, v := range entry {
+			if _, ok := fieldSet[k]; ok {
+				newEntry[k] = v
+			}
+		}
+		filtered[i] = newEntry
+	}
+	return filtered
+}
+
+func queryServers(query string, variables map[string]any) map[string]any {
 	servers, _, err := loadTestData()
 	if err != nil {
 		return map[string]any{"errors": []map[string]string{{"message": err.Error()}}}
@@ -158,6 +246,9 @@ func queryServers(variables map[string]any) map[string]any {
 			"tags": s.Tags,
 		}
 	}
+
+	requestedFields := extractRequestedFields(query)
+	entries = filterEntryFields(entries, requestedFields)
 
 	return map[string]any{
 		"entriesTotalCount": len(servers),

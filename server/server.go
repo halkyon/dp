@@ -21,7 +21,7 @@ type Server struct {
 	Price           float64  `json:"price,omitempty"`
 	Currency        string   `json:"currency,omitempty"`
 	BillingPeriod   string   `json:"billingPeriod,omitempty"`
-	Status          string   `json:"status"`
+	Status          string   `json:"status,omitempty"`
 	PowerStatus     string   `json:"powerStatus,omitempty"`
 	OperatingSystem string   `json:"operatingSystem,omitempty"`
 	CPU             string   `json:"cpu,omitempty"`
@@ -47,6 +47,7 @@ type Options struct {
 	Status   []string
 	Power    []string
 	Tag      []string
+	Fields   []string
 }
 
 type Option func(*Options)
@@ -93,6 +94,12 @@ func WithTag(tags ...string) Option {
 	}
 }
 
+func WithFields(fields ...string) Option {
+	return func(o *Options) {
+		o.Fields = append(o.Fields, fields...)
+	}
+}
+
 func (o Options) ToOpts() []Option {
 	var opts []Option
 	if len(o.Name) > 0 {
@@ -115,6 +122,9 @@ func (o Options) ToOpts() []Option {
 	}
 	if len(o.Tag) > 0 {
 		opts = append(opts, WithTag(o.Tag...))
+	}
+	if len(o.Fields) > 0 {
+		opts = append(opts, WithFields(o.Fields...))
 	}
 	return opts
 }
@@ -170,9 +180,14 @@ func List(ctx context.Context, client api.Querier, opts ...Option) ([]Server, er
 		input["filter"] = filter
 	}
 
+	query := serversQuery
+	if len(options.Fields) > 0 {
+		query = buildQuery(options.Fields)
+	}
+
 	for {
 		var data serversData
-		if err := client.Query(ctx, serversQuery, map[string]any{
+		if err := client.Query(ctx, query, map[string]any{
 			"input": input,
 		}, &data); err != nil {
 			return nil, err
@@ -305,6 +320,87 @@ type serversData struct {
 		IsLastPage        bool   `json:"isLastPage"`
 		Entries           []node `json:"entries"`
 	} `json:"servers"`
+}
+
+// fieldBlocks maps each CLI output field to the top-level GraphQL block(s) it requires.
+var fieldBlocks = map[string][]string{
+	"Name":            {"basic"},
+	"Alias":           {"basic"},
+	"Status":          {"basic"},
+	"Power":           {"basic"},
+	"Location":        {"location"},
+	"IP":              {"network"},
+	"IPType":          {"network"},
+	"AdditionalIPs":   {"network"},
+	"Hostname":        {"basic"},
+	"Uptime":          {"basic"},
+	"Price":           {"billing"},
+	"Currency":        {"billing"},
+	"BillingPeriod":   {"billing"},
+	"OperatingSystem": {"system"},
+	"CPU":             {"hardware"},
+	"Memory":          {"hardware"},
+	"Storage":         {"hardware"},
+	"Uplink":          {"network"},
+	"RAID":            {"system"},
+	"TrafficPlan":     {"trafficPlan"},
+	"IPMIURL":         {"network"},
+	"IPMIUser":        {"network"},
+	"BGP":             {"network"},
+	"DDOS":            {"network"},
+	"LinkAggregation": {"network"},
+	"Tags":            {"tags"},
+	"DeviceType":      {"basic"},
+}
+
+// allFieldBlocks lists every block in the order they should appear in the query.
+var allFieldBlocks = []string{
+	"basic", "location", "system", "hardware", "network", "trafficPlan", "billing", "tags",
+}
+
+var blockFragments = map[string]string{
+	"basic":       "name alias hostname uptime statusV2 powerStatus deviceType",
+	"location":    "location { name region }",
+	"system":      "system { operatingSystem { name } raid }",
+	"hardware":    "hardware { cpus { name cores } storage { size type } rams { size } }",
+	"network":     "network { ipAddresses { ip isPrimary type } uplinkCapacity hasBgp hasLinkAggregation ddosShieldLevel ipmi { ip username } }",
+	"trafficPlan": "trafficPlan { name type bandwidth }",
+	"billing":     "billing { subscriptionItem { price currency subscriptionItemDetail { server { name } } } }",
+	"tags":        "tags { key value }",
+}
+
+func buildQuery(fields []string) string {
+	blockSet := make(map[string]struct{})
+	for _, f := range fields {
+		blocks, ok := fieldBlocks[f]
+		if !ok {
+			continue
+		}
+		for _, b := range blocks {
+			blockSet[b] = struct{}{}
+		}
+	}
+
+	// If no recognized fields, include everything.
+	includeAll := len(blockSet) == 0
+
+	var fragments []string
+	for _, name := range allFieldBlocks {
+		if includeAll || func() bool { _, ok := blockSet[name]; return ok }() {
+			fragments = append(fragments, blockFragments[name])
+		}
+	}
+
+	return fmt.Sprintf(`query($input: PaginatedServersInput) {
+	servers(input: $input) {
+		entriesTotalCount
+		pageCount
+		isLastPage
+		entries {
+			%s
+		}
+	}
+}`, strings.Join(fragments, "\n\t\t\t"))
 }
 
 const serversQuery = `query($input: PaginatedServersInput) {

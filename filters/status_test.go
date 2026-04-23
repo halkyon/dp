@@ -1,7 +1,6 @@
 package filters
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +9,7 @@ import (
 
 func TestStatus_Get(t *testing.T) {
 	s := NewStatus()
-	statuses, err := s.Get(context.Background())
+	statuses, err := s.Get(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, []string{"WAITING", "PROVISIONING", "MAINTENANCE", "UNREACHABLE", "ACTIVE"}, statuses)
 }

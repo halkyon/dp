@@ -209,7 +209,8 @@ func run(cmd string, args []string, opts server.Options) error {
 
 	switch cmd {
 	case "servers":
-		return runShow(ctx, output, wide, *queryFields, opts, cfg)
+		opts.Fields = *queryFields
+		return runShow(ctx, output, wide, opts, cfg)
 	case "ssh":
 		if len(args) < 1 {
 			return errors.New("usage: dp ssh <alias> [ssh flags...]")
@@ -489,7 +490,7 @@ func getClient(cfg *config.Config) (api.Querier, error) {
 	return client, nil
 }
 
-func runShow(ctx context.Context, outputFormat string, outputWide bool, queryFields []string, opts server.Options, cfg *config.Config) error {
+func runShow(ctx context.Context, outputFormat string, outputWide bool, opts server.Options, cfg *config.Config) error {
 	client, err := getClient(cfg)
 	if err != nil {
 		return err
@@ -504,11 +505,11 @@ func runShow(ctx context.Context, outputFormat string, outputWide bool, queryFie
 	case "json":
 		var encoded []byte
 		var err error
-		if len(queryFields) > 0 {
+		if len(opts.Fields) > 0 {
 			output := make([]map[string]any, len(servers))
 			for i, s := range servers {
 				m := make(map[string]any)
-				for _, f := range queryFields {
+				for _, f := range opts.Fields {
 					m[f] = getFieldValue(s, f)
 				}
 				output[i] = m
@@ -522,10 +523,10 @@ func runShow(ctx context.Context, outputFormat string, outputWide bool, queryFie
 		}
 		fmt.Println(string(encoded))
 	case "table":
-		fmt.Println(printTable(servers, outputWide, queryFields))
+		fmt.Println(printTable(servers, outputWide, opts.Fields))
 	case "csv":
 		w := csv.NewWriter(os.Stdout)
-		if err := printCSV(w, servers, outputWide, queryFields); err != nil {
+		if err := printCSV(w, servers, outputWide, opts.Fields); err != nil {
 			return fmt.Errorf("writing CSV: %w", err)
 		}
 	default:
@@ -550,6 +551,8 @@ func runSSH(ctx context.Context, opts server.Options, sshUser string, args []str
 			opts.Alias = append(opts.Alias, alias)
 		}
 	}
+
+	opts.Fields = []string{"Name", "Alias", "IP", "OperatingSystem"}
 
 	servers, err := server.List(ctx, client, opts.ToOpts()...)
 	if err != nil {
