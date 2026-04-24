@@ -537,8 +537,19 @@ func runShow(ctx context.Context, outputFormat string, outputWide bool, opts ser
 		if err := printCSV(w, servers, outputWide, opts.Fields); err != nil {
 			return fmt.Errorf("writing CSV: %w", err)
 		}
+	case "raw":
+		if len(opts.Fields) == 0 {
+			return errors.New("raw output requires at least one query field")
+		}
+		for _, s := range servers {
+			var values []string
+			for _, f := range opts.Fields {
+				values = append(values, getFieldValue(s, f))
+			}
+			fmt.Println(strings.Join(values, " "))
+		}
 	default:
-		return fmt.Errorf("unknown output format: %s (use json, table, or csv)", outputFormat)
+		return fmt.Errorf("unknown output format: %s (use json, table, csv, or raw)", outputFormat)
 	}
 
 	return nil

@@ -150,13 +150,13 @@ _dp() {
                 ;;
             --name)
                 local -a names
-                if names=($({{.Name}} servers --name - 2>/dev/null | jq -r '.[].Name')); then
+                if names=($({{.Name}} servers -q Name -o raw 2>/dev/null)); then
                     COMPREPLY=($(compgen -W "${names[*]}" -- "$cur"))
                 fi
                 ;;
             --tag)
                 local -a tags
-                if tags=($({{.Name}} servers --tag - 2>/dev/null | jq -r '.[].Tags[]' 2>/dev/null)); then
+                if tags=($({{.Name}} servers -q Tags -o raw 2>/dev/null)); then
                     COMPREPLY=($(compgen -W "${tags[*]}" -- "$cur"))
                 fi
                 ;;
@@ -268,12 +268,12 @@ _dp() {
                 ;;
             --name)
                 local -a names
-                names=($({{.Name}} servers --name - 2>/dev/null | jq -r '.[].Name'))
+                names=($({{.Name}} servers -q Name -o raw 2>/dev/null))
                 _describe "name" names
                 ;;
             --tag)
                 local -a tags
-                tags=($({{.Name}} servers --tag - 2>/dev/null | jq -r '.[].Tags[]' 2>/dev/null))
+                tags=($({{.Name}} servers -q Tags -o raw 2>/dev/null))
                 _describe "tag" tags
                 ;;
             --query)
@@ -414,9 +414,9 @@ function __fish_{{.Name}}_complete_filter
         case "status"
             {{.Name}} status 2>/dev/null | string match "$word_to_complete*"
         case "name"
-            {{.Name}} servers --name - 2>/dev/null | jq -r '.[].Name' | string match "$word_to_complete*"
+            {{.Name}} servers -q Name -o raw 2>/dev/null | string match "$word_to_complete*"
         case "tag"
-            {{.Name}} servers --tag - 2>/dev/null | jq -r '.[].Tags[]' 2>/dev/null | string match "$word_to_complete*"
+            {{.Name}} servers -q Tags -o raw 2>/dev/null | string match "$word_to_complete*"
         case "query"
             {{.Name}} fields 2>/dev/null | string match "$word_to_complete*"
     end
