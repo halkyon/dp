@@ -126,8 +126,8 @@ dp ssh my-server
 # SSH as different user
 dp ssh root@my-server
 
-# SSH with verbose output
-dp -v ssh my-server
+# SSH with verbose output (flags passed to ssh)
+dp ssh my-server -v
 
 # SSH with specific user
 dp ssh --user=admin my-server
