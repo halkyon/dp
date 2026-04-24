@@ -58,9 +58,14 @@ List servers with optional filters.
 # List all servers
 dp servers
 
-# Output formats: json, table, csv (default json)
+# Output formats: json, table, csv, raw (default json)
 dp servers -o table
 dp servers -o csv
+dp servers -o raw -q Name
+
+# Shorthand flags
+dp servers -o raw -q Name           # same as --output raw --query Name
+dp servers -ow                       # same as --output-wide
 
 # Combine with filters (flags after command)
 dp servers -o csv --alias=dp-select-storage-slo-4
@@ -71,28 +76,40 @@ dp servers -o table -ow
 dp servers -o csv --output-wide
 
 # Filter by name (repeatable)
+dp servers -n DP-12345 -n DP-67890
 dp servers --name DP-12345 --name DP-67890
 
 # Filter by alias (repeatable)
+dp servers -a my-server -a prod-server
 dp servers --alias my-server --alias prod-server
 
 # Filter by location (repeatable)
+dp servers -l Amsterdam -l Berlin
 dp servers --location Amsterdam --location Berlin
 
 # Filter by region (repeatable)
+dp servers -r EU -r NA
 dp servers --region EU --region NA
 
 # Filter by status (repeatable)
+dp servers -s ACTIVE -s MAINTENANCE
 dp servers --status ACTIVE --status MAINTENANCE
 
 # Filter by power status (repeatable)
+dp servers -p ON
 dp servers --power ON
 
 # Filter by tag (repeatable)
+dp servers -t env=prod -t team=backend
 dp servers --tag env=prod --tag team=backend
 
 # Output specific field(s) (repeatable)
+dp servers -q Name -q Alias -q IP
 dp servers --query Name --query Alias --query IP
+
+# Raw output for scripting/completions (newline-separated values)
+dp servers -o raw -q Name           # outputs: DP-12345\nDP-67890
+dp servers -o raw -q Name -q Alias # outputs: DP-12345 my-server\nDP-67890 prod-server
 
 # Fuzzy filter using jq
 dp servers | jq '[.[] | select(.alias) | select(.alias | test("dp-prod-edge-fra01-[0-9]"))]'

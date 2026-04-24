@@ -52,8 +52,8 @@ func (s *stringSlice) String() string {
 
 func init() {
 	flag.Bool("verbose", false, "Print verbose information")
-	flag.StringVar(&outputFormatFlag, "o", "", "Output format (shorthand): json, table, csv")
-	flag.StringVar(&outputFormatFlag, "output", "", "Output format: json, table, csv")
+	flag.StringVar(&outputFormatFlag, "o", "", "Output format (shorthand): json, table, csv, raw")
+	flag.StringVar(&outputFormatFlag, "output", "", "Output format: json, table, csv, raw")
 	flag.BoolVar(&outputWide, "ow", false, "Show more fields (shorthand)")
 	flag.Bool("output-wide", false, "Show more fields in table/csv output")
 	flag.Var(queryFields, "q", "Output specific field(s) (repeatable)")
