@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/halkyon/dp/completion"
 	"github.com/halkyon/dp/config"
 	"github.com/halkyon/dp/internal/app"
 	"github.com/halkyon/dp/internal/output"
@@ -192,6 +193,11 @@ func run(cmd string, args []string, opts server.Options) error {
 			fmt.Println(f)
 		}
 		return nil
+	case "completion":
+		if len(args) < 1 {
+			return errors.New("usage: dp completion <bash|zsh|fish>")
+		}
+		return completion.Generate(completion.Shell(args[0]))
 	}
 
 	cfg, err := config.Load()
@@ -238,11 +244,6 @@ func run(cmd string, args []string, opts server.Options) error {
 			return errors.New("usage: dp ssh <alias> [ssh flags...]")
 		}
 		return a.SSH(ctx, opts, sshUser, args)
-	case "completion":
-		if len(args) < 1 {
-			return errors.New("usage: dp completion <bash|zsh|fish>")
-		}
-		return a.Completion(args[0])
 	case "aliases":
 		return a.Filter(ctx, "aliases")
 	case "locations":
