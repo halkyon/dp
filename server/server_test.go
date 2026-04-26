@@ -10,7 +10,8 @@ import (
 
 func TestBuildQuery(t *testing.T) {
 	t.Run("full query when no fields specified", func(t *testing.T) {
-		q := buildQuery(nil)
+		q, err := buildQuery(nil)
+		require.NoError(t, err)
 		assert.Contains(t, q, "name")
 		assert.Contains(t, q, "alias")
 		assert.Contains(t, q, "location {")
@@ -19,7 +20,8 @@ func TestBuildQuery(t *testing.T) {
 	})
 
 	t.Run("minimal query for basic fields", func(t *testing.T) {
-		q := buildQuery([]string{"Name", "Alias", "Status"})
+		q, err := buildQuery([]string{"Name", "Alias", "Status"})
+		require.NoError(t, err)
 		assert.Contains(t, q, "name")
 		assert.Contains(t, q, "alias")
 		assert.Contains(t, q, "statusV2")
@@ -29,7 +31,8 @@ func TestBuildQuery(t *testing.T) {
 	})
 
 	t.Run("query includes nested blocks for requested fields", func(t *testing.T) {
-		q := buildQuery([]string{"Name", "Location", "CPU", "Price"})
+		q, err := buildQuery([]string{"Name", "Location", "CPU", "Price"})
+		require.NoError(t, err)
 		assert.Contains(t, q, "name")
 		assert.Contains(t, q, "location {")
 		assert.Contains(t, q, "hardware {")
@@ -39,19 +42,22 @@ func TestBuildQuery(t *testing.T) {
 	})
 
 	t.Run("IP field includes network block", func(t *testing.T) {
-		q := buildQuery([]string{"Name", "IP"})
+		q, err := buildQuery([]string{"Name", "IP"})
+		require.NoError(t, err)
 		assert.Contains(t, q, "network {")
 		assert.Contains(t, q, "ipAddresses")
 	})
 
 	t.Run("Tags field includes tags block", func(t *testing.T) {
-		q := buildQuery([]string{"Name", "Tags"})
+		q, err := buildQuery([]string{"Name", "Tags"})
+		require.NoError(t, err)
 		assert.Contains(t, q, "tags {")
 		assert.NotContains(t, q, "hardware {")
 	})
 
 	t.Run("nil fields includes all blocks", func(t *testing.T) {
-		q := buildQuery(nil)
+		q, err := buildQuery(nil)
+		require.NoError(t, err)
 		for _, block := range allFieldBlocks {
 			frag := blockFragments[block]
 			// Extract the first token (the block name) from the fragment
@@ -65,6 +71,12 @@ func TestBuildQuery(t *testing.T) {
 			blockName := frag[:firstSpace]
 			assert.Contains(t, q, blockName, "missing block %q", block)
 		}
+	})
+
+	t.Run("unknown field returns error", func(t *testing.T) {
+		_, err := buildQuery([]string{"Name", "InvalidField"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown query field")
 	})
 }
 

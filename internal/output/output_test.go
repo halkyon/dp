@@ -1,4 +1,4 @@
-package main
+package output
 
 import (
 	"bytes"
@@ -38,13 +38,13 @@ func TestPrintTable(t *testing.T) {
 	}
 
 	t.Run("Narrow table", func(t *testing.T) {
-		got := printTable(servers, false, nil)
+		got := PrintTable(servers, false, nil)
 		assert.Contains(t, got, "DP-12345")
 		assert.NotContains(t, got, "Ubuntu")
 	})
 
 	t.Run("Wide table", func(t *testing.T) {
-		got := printTable(servers, true, nil)
+		got := PrintTable(servers, true, nil)
 		assert.Contains(t, got, "DP-12345")
 		assert.Contains(t, got, "Ubuntu")
 		assert.Contains(t, got, "99.99")
@@ -53,21 +53,21 @@ func TestPrintTable(t *testing.T) {
 
 	t.Run("Query fields table", func(t *testing.T) {
 		queryFields := []string{"Name", "IP"}
-		got := printTable(servers, false, queryFields)
+		got := PrintTable(servers, false, queryFields)
 		assert.Contains(t, got, "NAME")
 		assert.Contains(t, got, "IP")
 	})
 
 	t.Run("Query Storage field", func(t *testing.T) {
 		queryFields := []string{"Name", "Storage"}
-		got := printTable(servers, false, queryFields)
+		got := PrintTable(servers, false, queryFields)
 		assert.Contains(t, got, "NAME")
 		assert.Contains(t, got, "STORAGE")
 	})
 
 	t.Run("Case-insensitive query fields", func(t *testing.T) {
 		queryFields := []string{"name", "STORAGE"}
-		got := printTable(servers, false, queryFields)
+		got := PrintTable(servers, false, queryFields)
 		assert.Contains(t, got, "NAME")
 		assert.Contains(t, got, "STORAGE")
 	})
@@ -87,7 +87,7 @@ func TestPrintCSV(t *testing.T) {
 	t.Run("CSV Narrow", func(t *testing.T) {
 		buf := new(bytes.Buffer)
 		w := csv.NewWriter(buf)
-		require.NoError(t, printCSV(w, servers, false, nil))
+		require.NoError(t, PrintCSV(w, servers, false, nil))
 
 		records, err := csv.NewReader(buf).ReadAll()
 		require.NoError(t, err)
@@ -98,7 +98,7 @@ func TestPrintCSV(t *testing.T) {
 	t.Run("CSV Wide", func(t *testing.T) {
 		buf := new(bytes.Buffer)
 		w := csv.NewWriter(buf)
-		require.NoError(t, printCSV(w, servers, true, nil))
+		require.NoError(t, PrintCSV(w, servers, true, nil))
 
 		records, err := csv.NewReader(buf).ReadAll()
 		require.NoError(t, err)
@@ -109,7 +109,7 @@ func TestPrintCSV(t *testing.T) {
 		buf := new(bytes.Buffer)
 		w := csv.NewWriter(buf)
 		queryFields := []string{"Name", "IP"}
-		require.NoError(t, printCSV(w, servers, false, queryFields))
+		require.NoError(t, PrintCSV(w, servers, false, queryFields))
 
 		records, err := csv.NewReader(buf).ReadAll()
 		require.NoError(t, err)
@@ -127,10 +127,10 @@ func TestJSONMarshaling(t *testing.T) {
 	}
 
 	t.Run("JSON full", func(t *testing.T) {
-		output, err := json.MarshalIndent(servers, "", "  ")
+		encoded, err := PrintJSON(servers, nil)
 		require.NoError(t, err)
-		assert.Contains(t, string(output), `"name": "DP-12345"`)
-		assert.Contains(t, string(output), `"ip": "1.2.3.4"`)
+		assert.Contains(t, string(encoded), `"name": "DP-12345"`)
+		assert.Contains(t, string(encoded), `"ip": "1.2.3.4"`)
 	})
 
 	t.Run("JSON query fields", func(t *testing.T) {
@@ -140,7 +140,7 @@ func TestJSONMarshaling(t *testing.T) {
 		for i, s := range servers {
 			m := make(map[string]any)
 			for _, f := range queryFields {
-				m[f] = getFieldValue(s, f)
+				m[f] = GetFieldValue(s, f)
 			}
 			output[i] = m
 		}

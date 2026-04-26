@@ -180,7 +180,10 @@ func List(ctx context.Context, client api.Querier, opts ...Option) ([]Server, er
 		input["filter"] = filter
 	}
 
-	query := buildQuery(options.Fields)
+	query, err := buildQuery(options.Fields)
+	if err != nil {
+		return nil, err
+	}
 
 	for {
 		var data serversData
@@ -369,12 +372,12 @@ var blockFragments = map[string]string{
 	"tags":        "tags { key value }",
 }
 
-func buildQuery(fields []string) string {
+func buildQuery(fields []string) (string, error) {
 	blockSet := make(map[string]struct{})
 	for _, f := range fields {
 		blocks, ok := fieldBlocks[strings.ToLower(f)]
 		if !ok {
-			continue
+			return "", fmt.Errorf("unknown query field %q", f)
 		}
 		for _, b := range blocks {
 			blockSet[b] = struct{}{}
@@ -400,7 +403,7 @@ func buildQuery(fields []string) string {
 			%s
 		}
 	}
-}`, strings.Join(fragments, "\n\t\t\t"))
+}`, strings.Join(fragments, "\n\t\t\t")), nil
 }
 
 func convertServers(items []node) []Server {

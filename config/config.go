@@ -2,6 +2,7 @@ package config
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -110,6 +111,9 @@ func Load(opts ...ConfigOption) (*Config, error) {
 	}
 
 	if credsPath != "" {
+		if err := checkFilePermissions(credsPath); err != nil {
+			return nil, err
+		}
 		credsData, err := loadINI(credsPath)
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
@@ -137,6 +141,21 @@ func (c *Config) configPaths() (config, credentials string) {
 		return "", ""
 	}
 	return home + defaultConfigDir + "/config", home + defaultConfigDir + "/credentials"
+}
+
+func checkFilePermissions(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	mode := info.Mode().Perm()
+	if mode&0077 != 0 {
+		return fmt.Errorf("credentials file %q is readable by group or others (%#o); run: chmod 600 %q", path, mode, path)
+	}
+	return nil
 }
 
 func loadINI(path string) (keys map[string]string, err error) {
