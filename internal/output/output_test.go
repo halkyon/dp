@@ -140,7 +140,7 @@ func TestJSONMarshaling(t *testing.T) {
 		for i, s := range servers {
 			m := make(map[string]any)
 			for _, f := range queryFields {
-				m[f] = GetFieldValue(s, f)
+				m[f] = getFieldValue(s, f)
 			}
 			output[i] = m
 		}

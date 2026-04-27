@@ -37,13 +37,13 @@ var QueryableFields = []string{
 	"DeviceType",
 }
 
-type Column struct {
+type column struct {
 	Name        string
 	DisplayName string
 	Width       int
 }
 
-func GetFieldValue(s server.Server, field string) string {
+func getFieldValue(s server.Server, field string) string {
 	switch strings.ToLower(field) {
 	case "name":
 		return s.Name
@@ -102,16 +102,16 @@ func GetFieldValue(s server.Server, field string) string {
 	}
 }
 
-func BuildColumns(wide bool, queryFields []string) []Column {
+func buildColumns(wide bool, queryFields []string) []column {
 	switch {
 	case len(queryFields) > 0:
-		cols := make([]Column, len(queryFields))
+		cols := make([]column, len(queryFields))
 		for i, f := range queryFields {
-			cols[i] = Column{Name: f, DisplayName: strings.ToUpper(f), Width: 0}
+			cols[i] = column{Name: f, DisplayName: strings.ToUpper(f), Width: 0}
 		}
 		return cols
 	case wide:
-		return []Column{
+		return []column{
 			{Name: "Name", DisplayName: "NAME", Width: 0},
 			{Name: "Alias", DisplayName: "ALIAS", Width: 0},
 			{Name: "Status", DisplayName: "STATUS", Width: 0},
@@ -125,7 +125,7 @@ func BuildColumns(wide bool, queryFields []string) []Column {
 			{Name: "Price", DisplayName: "PRICE", Width: 0},
 		}
 	default:
-		return []Column{
+		return []column{
 			{Name: "Name", DisplayName: "NAME", Width: 0},
 			{Name: "Alias", DisplayName: "ALIAS", Width: 0},
 			{Name: "Status", DisplayName: "STATUS", Width: 0},
@@ -140,13 +140,13 @@ func PrintTable(servers []server.Server, wide bool, queryFields []string) string
 		return "No servers found"
 	}
 
-	cols := BuildColumns(wide, queryFields)
+	cols := buildColumns(wide, queryFields)
 
 	rowValues := make([][]string, len(servers))
 	for si, s := range servers {
 		rowValues[si] = make([]string, len(cols))
 		for i, c := range cols {
-			val := GetFieldValue(s, c.Name)
+			val := getFieldValue(s, c.Name)
 			rowValues[si][i] = val
 			cols[i].Width = max(cols[i].Width, len(val))
 		}
@@ -207,7 +207,7 @@ func PrintCSV(w *csv.Writer, servers []server.Server, wide bool, queryFields []s
 	for _, s := range servers {
 		var record []string
 		for _, f := range fields {
-			record = append(record, GetFieldValue(s, f))
+			record = append(record, getFieldValue(s, f))
 		}
 		if err := w.Write(record); err != nil {
 			return err
@@ -226,7 +226,7 @@ func PrintJSON(servers []server.Server, queryFields []string) ([]byte, error) {
 		for i, s := range servers {
 			m := make(map[string]any)
 			for _, f := range queryFields {
-				m[f] = GetFieldValue(s, f)
+				m[f] = getFieldValue(s, f)
 			}
 			output[i] = m
 		}

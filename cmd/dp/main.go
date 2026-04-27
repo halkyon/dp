@@ -233,12 +233,6 @@ func run(cmd string, args []string, opts server.Options) error {
 	case "servers":
 		if len(*queryFields) > 0 {
 			opts.Fields = *queryFields
-		} else if output == "table" || output == "csv" {
-			if wide {
-				opts.Fields = []string{"Name", "Alias", "Status", "Power", "Location", "IP", "OS", "CPU", "Memory", "Storage", "Price"}
-			} else {
-				opts.Fields = []string{"Name", "Alias", "Status", "Location", "IP"}
-			}
 		}
 		return c.ShowServers(ctx, opts, output, wide)
 	case "ssh":
