@@ -173,7 +173,8 @@ _dp() {
 complete -F _dp {{.Name}}
 `))
 
-var zshCompletionTmpl = template.Must(template.New("zsh").Parse(`# zsh completion for {{.Name}}
+var zshCompletionTmpl = template.Must(template.New("zsh").Parse(`#compdef {{.Name}}
+# zsh completion for {{.Name}}
 _dp() {
     local -a commands
     commands=(
@@ -293,8 +294,6 @@ _dp() {
         esac
     fi
 }
-
-compdef _dp {{.Name}}
 `))
 
 var fishCompletionTmpl = template.Must(template.New("fish").Parse(`# fish completion for {{.Name}}
