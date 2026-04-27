@@ -143,19 +143,40 @@ dp completion fish > ~/.config/fish/completions/dp.fish
 ## Shell completion setup
 
 After sourcing the completion script (see below), tab completion will work for:
-- Commands (servers, ssh, completion)
-- Alias names when using `servers` or `ssh`
-
-### zsh
-
-```bash
-dp completion zsh > ~/.zsh/completions/_dp
-```
+- Commands (`servers`, `ssh`, `completion`)
+- Alias names when using `-a` / `--alias`
+- Location names when using `-l` / `--location`
+- Region names when using `-r` / `--region`
+- Power statuses when using `-p` / `--power`
+- Server statuses when using `-s` / `--status`
+- Server names when using `-n` / `--name`
+- Tags when using `-t` / `--tag`
+- Queryable fields when using `-q` / `--query`
 
 ### bash
 
 ```bash
+# User-level (no root required)
+mkdir -p ~/.local/share/bash-completion/completions
+dp completion bash > ~/.local/share/bash-completion/completions/dp
+
+# Or system-wide (requires root)
 dp completion bash > /etc/bash_completion.d/dp
+```
+
+### zsh
+
+```bash
+# Add to ~/.zshrc first if not already present:
+# fpath+=(~/.zsh/completions)
+mkdir -p ~/.zsh/completions
+dp completion zsh > ~/.zsh/completions/_dp
+```
+
+### fish
+
+```bash
+dp completion fish > ~/.config/fish/completions/dp.fish
 ```
 
 ## SDK usage
