@@ -132,8 +132,6 @@ dp ssh --user=admin my-server
 
 ## Shell completion setup
 
-`dp completion` can automatically detect your current shell, or you can explicitly specify one.
-
 After sourcing the completion script (see below), tab completion will work for:
 - Commands (`servers`, `ssh`, `completion`)
 - Alias names when using `-a` / `--alias`
