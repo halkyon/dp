@@ -16,6 +16,7 @@ import (
 	"github.com/halkyon/dp/config"
 	"github.com/halkyon/dp/filters"
 	"github.com/halkyon/dp/internal/output"
+	"github.com/halkyon/dp/internal/shell"
 	"github.com/halkyon/dp/server"
 	"github.com/halkyon/dp/ssh"
 )
@@ -107,8 +108,15 @@ func (c *CLI) SSH(ctx context.Context, opts server.Options, sshUser string, args
 	return ssh.Run(ctx, servers, sshUser, args)
 }
 
-func GenerateCompletion(shell string) error {
-	return completion.Generate(completion.Shell(shell))
+func GenerateCompletion(shellName string) error {
+	if shellName == "" {
+		detectedShell, err := shell.DetectShell()
+		if err != nil {
+			return err
+		}
+		return completion.Generate(detectedShell)
+	}
+	return completion.Generate(completion.Shell(shellName))
 }
 
 func (c *CLI) Filter(ctx context.Context, filterType string) error {

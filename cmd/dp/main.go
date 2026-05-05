@@ -120,7 +120,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "  --user <name>           SSH user (default: root on linux, admin on windows)\n")
 		case "completion":
 			fmt.Fprintf(os.Stderr, "Options for completion:\n")
-			fmt.Fprintf(os.Stderr, "  (shell name required: bash, zsh, fish)\n")
+			fmt.Fprintf(os.Stderr, "  [shell name] (optional: bash, zsh, fish; auto-detected if omitted)\n")
 		default:
 		}
 	}
@@ -153,7 +153,10 @@ func main() {
 	}
 
 	// After re-parsing, remaining non-flag args are in flag.Args()
-	remainingArgs := flag.Args()
+	var remainingArgs []string
+	if len(cmdArgs) > 0 {
+		remainingArgs = flag.Args()
+	}
 
 	if err := run(cmd, remainingArgs, opts); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
@@ -191,10 +194,11 @@ func run(cmd string, args []string, opts server.Options) error {
 		cli.Fields()
 		return nil
 	case "completion":
-		if len(args) < 1 {
-			return errors.New("usage: dp completion <bash|zsh|fish>")
+		shellName := ""
+		if len(args) > 0 {
+			shellName = args[0]
 		}
-		return cli.GenerateCompletion(args[0])
+		return cli.GenerateCompletion(shellName)
 	}
 
 	cfg, err := config.Load()
