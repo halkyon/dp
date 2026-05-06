@@ -300,19 +300,10 @@ func (c *CLI) GenerateCompletionData(ctx context.Context, filterType, shell, wor
 
 		switch filterType {
 		case "aliases":
-			if c.client == nil {
-				return nil
-			}
 			filter = filters.NewAliases(c.client, c.cfg.AliasesCache)
 		case "locations":
-			if c.client == nil {
-				return nil
-			}
 			filter = filters.NewLocations(c.client, c.cfg.LocationsCache)
 		case "regions":
-			if c.client == nil {
-				return nil
-			}
 			filter = filters.NewRegions(c.client, c.cfg.RegionsCache)
 		case "power":
 			filter = filters.NewPower()
@@ -324,14 +315,8 @@ func (c *CLI) GenerateCompletionData(ctx context.Context, filterType, shell, wor
 			}
 			return nil
 		case "names":
-			if c.client == nil {
-				return nil
-			}
 			filter = filters.NewNames(c.client, c.cfg.NamesCache)
 		case "tags":
-			if c.client == nil {
-				return nil
-			}
 			filter = filters.NewTags(c.client, c.cfg.TagsCache)
 		default:
 			return fmt.Errorf("unknown completion type: %s", filterType)
