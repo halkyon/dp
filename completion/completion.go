@@ -44,7 +44,11 @@ var bashCompletionTmpl = template.Must(template.New("bash").Parse(`# bash comple
 _dp() {
     local cur prev words cword
     _init_completion || return
-    COMPREPLY=($({{.Name}} generate-completion --shell bash --word "$cur" --prev "$prev" 2>/dev/null))
+    local prev_arg="$prev"
+    if [[ $cword -eq 1 ]]; then
+        prev_arg=""
+    fi
+    COMPREPLY=($({{.Name}} generate-completion --shell bash --word "$cur" --prev "$prev_arg" 2>/dev/null))
 }
 
 complete -F _dp {{.Name}}
@@ -55,6 +59,9 @@ var zshCompletionTmpl = template.Must(template.New("zsh").Parse(`#compdef {{.Nam
 _dp() {
     local cur_word="${words[CURRENT]}"
     local prev_word="${words[CURRENT-1]}"
+    if (( CURRENT == 2 )); then
+        prev_word=""
+    fi
     local -a completions
     while IFS= read -r line; do
         completions+=("${line}")
@@ -65,8 +72,12 @@ _dp() {
 
 var fishCompletionTmpl = template.Must(template.New("fish").Parse(`# fish completion for {{.Name}}
 function __fish_{{.Name}}_complete
+    set -l cmd (commandline -opc)
     set -l cur (commandline -ct)
-    set -l prev (commandline -op)
+    set -l prev ""
+    if test (count $cmd) -gt 1
+        set prev $cmd[-1]
+    end
     {{.Name}} generate-completion --shell fish --word "$cur" --prev "$prev" 2>/dev/null
 end
 
