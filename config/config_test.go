@@ -168,6 +168,8 @@ func TestConfig_Load(t *testing.T) {
 		assert.Equal(t, defaultAliasesCache, cfg.AliasesCache)
 		assert.Equal(t, defaultLocationsCache, cfg.LocationsCache)
 		assert.Equal(t, defaultRegionsCache, cfg.RegionsCache)
+		assert.Equal(t, defaultNamesCache, cfg.NamesCache)
+		assert.Equal(t, defaultTagsCache, cfg.TagsCache)
 	})
 
 	t.Run("with config file", func(t *testing.T) {

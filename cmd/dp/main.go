@@ -28,6 +28,10 @@ var (
 	flagPower    = new(stringSlice)
 	flagTag      = new(stringSlice)
 	flagUser     = new(stringSlice)
+
+	completionShell string
+	completionWord  string
+	completionPrev  string
 )
 
 type stringSlice []string
@@ -76,6 +80,11 @@ func init() {
 	flag.Var(flagTag, "tag", "Filter by tag (repeatable)")
 
 	flag.Var(flagUser, "user", "SSH user (for ssh command)")
+
+	// generate-completion flags
+	flag.StringVar(&completionShell, "shell", "", "Shell type for completion (bash, zsh, fish)")
+	flag.StringVar(&completionWord, "word", "", "Current word being completed")
+	flag.StringVar(&completionPrev, "prev", "", "Previous word on command line")
 }
 
 func main() {
@@ -91,15 +100,18 @@ func main() {
 
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] <command> [command options]\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Commands:\n")
-		fmt.Fprintf(os.Stderr, "  servers      List servers with optional filters\n")
-		fmt.Fprintf(os.Stderr, "  ssh          SSH to server by alias\n")
-		fmt.Fprintf(os.Stderr, "  completion   Generate shell completion script\n")
-		fmt.Fprintf(os.Stderr, "  aliases      List all server aliases\n")
-		fmt.Fprintf(os.Stderr, "  locations    List all available locations\n")
-		fmt.Fprintf(os.Stderr, "  regions      List all available regions\n")
-		fmt.Fprintf(os.Stderr, "  power        List all power statuses\n")
-		fmt.Fprintf(os.Stderr, "  status       List all server statuses\n")
-		fmt.Fprintf(os.Stderr, "  fields       List all queryable server fields\n\n")
+		fmt.Fprintf(os.Stderr, "  servers             List servers with optional filters\n")
+		fmt.Fprintf(os.Stderr, "  ssh                 SSH to server by alias\n")
+		fmt.Fprintf(os.Stderr, "  completion          Generate shell completion script\n")
+		fmt.Fprintf(os.Stderr, "  generate-completion Generate dynamic completion data\n")
+		fmt.Fprintf(os.Stderr, "  aliases             List all server aliases\n")
+		fmt.Fprintf(os.Stderr, "  locations           List all available locations\n")
+		fmt.Fprintf(os.Stderr, "  regions             List all available regions\n")
+		fmt.Fprintf(os.Stderr, "  power               List all power statuses\n")
+		fmt.Fprintf(os.Stderr, "  status              List all server statuses\n")
+		fmt.Fprintf(os.Stderr, "  names               List all server names\n")
+		fmt.Fprintf(os.Stderr, "  tags                List all server tags\n")
+		fmt.Fprintf(os.Stderr, "  fields              List all queryable server fields\n\n")
 
 		switch cmd {
 		case "servers":
@@ -185,7 +197,33 @@ func run(cmd string, args []string, opts server.Options) error {
 		return err
 	}
 
-	// Commands that don't need config or API client
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+
+	var client api.Querier
+	if cfg.APIKey != "" {
+		c, err := api.NewClient(cfg.APIKey)
+		if err != nil {
+			return err
+		}
+		if cfg.APIURL != "" {
+			c.SetBaseURL(cfg.APIURL)
+		}
+		client = c
+	}
+
+	needsClient := cmd == "servers" || cmd == "ssh" || cmd == "aliases" || cmd == "locations" || cmd == "regions" || cmd == "names" || cmd == "tags"
+	if needsClient && client == nil {
+		return errors.New("API key required; set DATAPACKET_API_KEY or api_key in ~/.config/dp/credentials")
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	c := cli.New(cfg, client)
+
 	switch cmd {
 	case "version":
 		fmt.Println(cli.GetVersion())
@@ -199,47 +237,24 @@ func run(cmd string, args []string, opts server.Options) error {
 			shellName = args[0]
 		}
 		return cli.GenerateCompletion(shellName)
-	}
-
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-
-	client, err := api.NewClient(cfg.APIKey)
-	if err != nil {
-		return err
-	}
-	if cfg.APIURL != "" {
-		client.SetBaseURL(cfg.APIURL)
-	}
-
-	wide := outputWide || flag.Lookup("output-wide").Value.String() == "true"
-	sshUser := ""
-	if len(*flagUser) > 0 {
-		sshUser = (*flagUser)[0]
-	}
-
-	output := "json"
-	if cfg.Output != "" {
-		output = cfg.Output
-	}
-	if outputFormatFlag != "" {
-		output = outputFormatFlag
-	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-
-	c := cli.New(cfg, client)
-
-	switch cmd {
 	case "servers":
+		wide := outputWide || flag.Lookup("output-wide").Value.String() == "true"
+		output := "json"
+		if cfg.Output != "" {
+			output = cfg.Output
+		}
+		if outputFormatFlag != "" {
+			output = outputFormatFlag
+		}
 		if len(*queryFields) > 0 {
 			opts.Fields = *queryFields
 		}
 		return c.ShowServers(ctx, opts, output, wide)
 	case "ssh":
+		sshUser := ""
+		if len(*flagUser) > 0 {
+			sshUser = (*flagUser)[0]
+		}
 		if len(args) < 1 {
 			return errors.New("usage: dp ssh <alias> [ssh flags...]")
 		}
@@ -254,6 +269,16 @@ func run(cmd string, args []string, opts server.Options) error {
 		return c.Filter(ctx, "power")
 	case "status":
 		return c.Filter(ctx, "status")
+	case "names":
+		return c.Filter(ctx, "names")
+	case "tags":
+		return c.Filter(ctx, "tags")
+	case "generate-completion":
+		filterType := ""
+		if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+			filterType = args[0]
+		}
+		return c.GenerateCompletionData(ctx, filterType, completionShell, completionWord, completionPrev)
 	default:
 		return fmt.Errorf("unknown command: %s", cmd)
 	}

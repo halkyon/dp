@@ -30,6 +30,7 @@ type serverAliasNode struct {
 type serverAliasesData struct {
 	Servers struct {
 		IsLastPage bool              `json:"isLastPage"`
+		PageCount  int               `json:"pageCount"`
 		Entries    []serverAliasNode `json:"entries"`
 	} `json:"servers"`
 }
@@ -70,7 +71,7 @@ func (a *Aliases) Get(ctx context.Context) ([]string, error) {
 			}
 		}
 
-		if data.Servers.IsLastPage {
+		if data.Servers.IsLastPage || pageIndex >= data.Servers.PageCount-1 {
 			break
 		}
 

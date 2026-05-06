@@ -13,6 +13,8 @@ const (
 	defaultAliasesCache   = 1 * time.Hour
 	defaultLocationsCache = 7 * 24 * time.Hour
 	defaultRegionsCache   = 7 * 24 * time.Hour
+	defaultNamesCache     = 5 * time.Minute
+	defaultTagsCache      = 5 * time.Minute
 )
 
 type Config struct {
@@ -23,6 +25,8 @@ type Config struct {
 	AliasesCache   time.Duration
 	LocationsCache time.Duration
 	RegionsCache   time.Duration
+	NamesCache     time.Duration
+	TagsCache      time.Duration
 }
 
 type ConfigOption func(*Config)
@@ -108,6 +112,38 @@ func Load(opts ...ConfigOption) (*Config, error) {
 		cfg.RegionsCache = d
 	} else {
 		cfg.RegionsCache = defaultRegionsCache
+	}
+
+	if envNames := os.Getenv("DATAPACKET_NAMES_CACHE"); envNames != "" {
+		d, err := time.ParseDuration(envNames)
+		if err != nil {
+			return nil, err
+		}
+		cfg.NamesCache = d
+	} else if data != nil && data["names_cache"] != "" {
+		d, err := time.ParseDuration(data["names_cache"])
+		if err != nil {
+			return nil, err
+		}
+		cfg.NamesCache = d
+	} else {
+		cfg.NamesCache = defaultNamesCache
+	}
+
+	if envTags := os.Getenv("DATAPACKET_TAGS_CACHE"); envTags != "" {
+		d, err := time.ParseDuration(envTags)
+		if err != nil {
+			return nil, err
+		}
+		cfg.TagsCache = d
+	} else if data != nil && data["tags_cache"] != "" {
+		d, err := time.ParseDuration(data["tags_cache"])
+		if err != nil {
+			return nil, err
+		}
+		cfg.TagsCache = d
+	} else {
+		cfg.TagsCache = defaultTagsCache
 	}
 
 	if credsPath != "" {
