@@ -10,9 +10,9 @@ import (
 
 const (
 	defaultConfigDir      = "/.config/dp"
-	defaultAliasesCache   = 1 * time.Hour
 	defaultLocationsCache = 7 * 24 * time.Hour
 	defaultRegionsCache   = 7 * 24 * time.Hour
+	defaultAliasesCache   = 5 * time.Minute
 	defaultNamesCache     = 5 * time.Minute
 	defaultTagsCache      = 5 * time.Minute
 )
