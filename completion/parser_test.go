@@ -383,7 +383,7 @@ func TestComplete_ZshFormat(t *testing.T) {
 
 	result, err := filter.Complete(t.Context(), Request{Shell: ShellZsh, Word: "web", Prev: "--alias"})
 	require.NoError(t, err)
-	assert.Equal(t, []string{"web1:web1", "web2:web2"}, result)
+	assert.Equal(t, []string{"web1", "web2"}, result)
 }
 
 func TestComplete_FishFormat(t *testing.T) {
@@ -392,7 +392,7 @@ func TestComplete_FishFormat(t *testing.T) {
 
 	result, err := filter.Complete(t.Context(), Request{Shell: ShellFish, Word: "web", Prev: "--alias"})
 	require.NoError(t, err)
-	assert.Equal(t, []string{"web1\tweb1", "web2\tweb2"}, result)
+	assert.Equal(t, []string{"web1", "web2"}, result)
 }
 
 func TestComplete_BashFormat(t *testing.T) {

@@ -204,20 +204,12 @@ func formatForShell(values []string, shell Shell, ct completionType) []string {
 }
 
 func formatZsh(values []string, ct completionType) []string {
+	if ct != compRegions {
+		return values
+	}
 	result := make([]string, len(values))
-	switch ct {
-	case compRegions:
-		for i, v := range values {
-			result[i] = v + ":" + regionTitle(v)
-		}
-	case compLocations, compFields, compPower, compStatus, compNames, compTags:
-		for i, v := range values {
-			result[i] = v
-		}
-	default:
-		for i, v := range values {
-			result[i] = v + ":" + v
-		}
+	for i, v := range values {
+		result[i] = v + ":" + regionTitle(v)
 	}
 	return result
 }
@@ -236,20 +228,12 @@ func regionTitle(region string) string {
 }
 
 func formatFish(values []string, ct completionType) []string {
+	if ct != compRegions {
+		return values
+	}
 	result := make([]string, len(values))
-	switch ct {
-	case compRegions:
-		for i, v := range values {
-			result[i] = v + "\t" + regionTitle(v)
-		}
-	case compLocations, compFields, compPower, compStatus, compNames, compTags:
-		for i, v := range values {
-			result[i] = v
-		}
-	default:
-		for i, v := range values {
-			result[i] = v + "\t" + v
-		}
+	for i, v := range values {
+		result[i] = v + "\t" + regionTitle(v)
 	}
 	return result
 }
