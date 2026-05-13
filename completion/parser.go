@@ -35,7 +35,7 @@ func (e *Parser) Complete(ctx context.Context, req Request) ([]string, error) {
 	completionType, word := parseContext(req.Prev, req.Word)
 	values := e.getValues(ctx, completionType)
 	filtered := filterValues(values, word, completionType)
-	return formatForShell(filtered, req.Shell), nil
+	return formatForShell(filtered, req.Shell, completionType), nil
 }
 
 type completionType string
@@ -191,30 +191,65 @@ func filterValues(values []string, word string, ct completionType) []string {
 	return result
 }
 
-func formatForShell(values []string, shell Shell) []string {
+func formatForShell(values []string, shell Shell, ct completionType) []string {
 	switch shell {
 	case ShellZsh:
-		return formatZsh(values)
+		return formatZsh(values, ct)
 	case ShellFish:
-		return formatFish(values)
+		return formatFish(values, ct)
 	default:
 		// bash or unknown
 		return values
 	}
 }
 
-func formatZsh(values []string) []string {
+func formatZsh(values []string, ct completionType) []string {
 	result := make([]string, len(values))
-	for i, v := range values {
-		result[i] = v + ":" + v
+	switch ct {
+	case compRegions:
+		for i, v := range values {
+			result[i] = v + ":" + regionTitle(v)
+		}
+	case compLocations, compFields:
+		for i, v := range values {
+			result[i] = v
+		}
+	default:
+		for i, v := range values {
+			result[i] = v + ":" + v
+		}
 	}
 	return result
 }
 
-func formatFish(values []string) []string {
+func regionTitle(region string) string {
+	titles := map[string]string{
+		"AP": "Asia Pacific",
+		"EU": "Europe",
+		"NA": "North America",
+		"SA": "South America",
+	}
+	if title, ok := titles[region]; ok {
+		return title
+	}
+	return region
+}
+
+func formatFish(values []string, ct completionType) []string {
 	result := make([]string, len(values))
-	for i, v := range values {
-		result[i] = v + "\t" + v
+	switch ct {
+	case compRegions:
+		for i, v := range values {
+			result[i] = v + "\t" + regionTitle(v)
+		}
+	case compLocations, compFields:
+		for i, v := range values {
+			result[i] = v
+		}
+	default:
+		for i, v := range values {
+			result[i] = v + "\t" + v
+		}
 	}
 	return result
 }
