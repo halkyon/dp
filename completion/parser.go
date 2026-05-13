@@ -210,7 +210,7 @@ func formatZsh(values []string, ct completionType) []string {
 		for i, v := range values {
 			result[i] = v + ":" + regionTitle(v)
 		}
-	case compLocations, compFields:
+	case compLocations, compFields, compPower, compStatus, compNames, compTags:
 		for i, v := range values {
 			result[i] = v
 		}
@@ -242,7 +242,7 @@ func formatFish(values []string, ct completionType) []string {
 		for i, v := range values {
 			result[i] = v + "\t" + regionTitle(v)
 		}
-	case compLocations, compFields:
+	case compLocations, compFields, compPower, compStatus, compNames, compTags:
 		for i, v := range values {
 			result[i] = v
 		}
