@@ -204,12 +204,18 @@ func formatForShell(values []string, shell Shell, ct completionType) []string {
 }
 
 func formatZsh(values []string, ct completionType) []string {
-	if ct != compRegions {
-		return values
-	}
 	result := make([]string, len(values))
-	for i, v := range values {
-		result[i] = v + ":" + regionTitle(v)
+	switch ct {
+	case compRegions:
+		for i, v := range values {
+			result[i] = v + ":" + regionTitle(v)
+		}
+	case compCommands:
+		for i, v := range values {
+			result[i] = v + ":" + commandDesc(v)
+		}
+	default:
+		return values
 	}
 	return result
 }
@@ -227,13 +233,40 @@ func regionTitle(region string) string {
 	return region
 }
 
-func formatFish(values []string, ct completionType) []string {
-	if ct != compRegions {
-		return values
+func commandDesc(cmd string) string {
+	descs := map[string]string{
+		"servers":             "List servers with optional filters",
+		"ssh":                 "SSH to server by alias",
+		"completion":          "Generate shell completion script",
+		"generate-completion": "Generate dynamic completion data",
+		"aliases":             "List all server aliases",
+		"locations":           "List all available locations",
+		"regions":             "List all available regions",
+		"power":               "List all power statuses",
+		"status":              "List all server statuses",
+		"names":               "List all server names",
+		"tags":                "List all server tags",
+		"fields":              "List all queryable server fields",
 	}
+	if desc, ok := descs[cmd]; ok {
+		return desc
+	}
+	return cmd
+}
+
+func formatFish(values []string, ct completionType) []string {
 	result := make([]string, len(values))
-	for i, v := range values {
-		result[i] = v + "\t" + regionTitle(v)
+	switch ct {
+	case compRegions:
+		for i, v := range values {
+			result[i] = v + "\t" + regionTitle(v)
+		}
+	case compCommands:
+		for i, v := range values {
+			result[i] = v + "\t" + commandDesc(v)
+		}
+	default:
+		return values
 	}
 	return result
 }
