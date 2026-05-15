@@ -10,6 +10,12 @@ import (
 	"github.com/halkyon/dp/server"
 )
 
+var (
+	defaultTableFields     = []string{"Name", "Alias", "Status", "Location", "IP"}
+	defaultTableWideFields = []string{"Name", "Alias", "Status", "Power", "Location", "IP", "OS", "CPU", "Memory", "Storage", "Price"}
+	defaultRawFields       = []string{"Name"}
+)
+
 var QueryableFields = []string{
 	"Name",
 	"Alias",
@@ -102,36 +108,22 @@ func getFieldValue(s server.Server, field string) string {
 	}
 }
 
+func columnsFromFields(fields []string) []column {
+	cols := make([]column, len(fields))
+	for i, f := range fields {
+		cols[i] = column{Name: f, DisplayName: strings.ToUpper(f), Width: 0}
+	}
+	return cols
+}
+
 func buildColumns(wide bool, queryFields []string) []column {
 	switch {
 	case len(queryFields) > 0:
-		cols := make([]column, len(queryFields))
-		for i, f := range queryFields {
-			cols[i] = column{Name: f, DisplayName: strings.ToUpper(f), Width: 0}
-		}
-		return cols
+		return columnsFromFields(queryFields)
 	case wide:
-		return []column{
-			{Name: "Name", DisplayName: "NAME", Width: 0},
-			{Name: "Alias", DisplayName: "ALIAS", Width: 0},
-			{Name: "Status", DisplayName: "STATUS", Width: 0},
-			{Name: "Power", DisplayName: "POWER", Width: 0},
-			{Name: "Location", DisplayName: "LOCATION", Width: 0},
-			{Name: "IP", DisplayName: "IP", Width: 0},
-			{Name: "OS", DisplayName: "OS", Width: 0},
-			{Name: "CPU", DisplayName: "CPU", Width: 0},
-			{Name: "Memory", DisplayName: "MEMORY", Width: 0},
-			{Name: "Storage", DisplayName: "STORAGE", Width: 0},
-			{Name: "Price", DisplayName: "PRICE", Width: 0},
-		}
+		return columnsFromFields(defaultTableWideFields)
 	default:
-		return []column{
-			{Name: "Name", DisplayName: "NAME", Width: 0},
-			{Name: "Alias", DisplayName: "ALIAS", Width: 0},
-			{Name: "Status", DisplayName: "STATUS", Width: 0},
-			{Name: "Location", DisplayName: "LOCATION", Width: 0},
-			{Name: "IP", DisplayName: "IP", Width: 0},
-		}
+		return columnsFromFields(defaultTableFields)
 	}
 }
 
@@ -195,9 +187,9 @@ func PrintCSV(w *csv.Writer, servers []server.Server, wide bool, queryFields []s
 	case len(queryFields) > 0:
 		fields = queryFields
 	case wide:
-		fields = []string{"Name", "Alias", "Status", "Power", "Location", "IP", "OS", "CPU", "Memory", "Storage", "Price"}
+		fields = defaultTableWideFields
 	default:
-		fields = []string{"Name", "Alias", "Status", "Location", "IP"}
+		fields = defaultTableFields
 	}
 
 	if err := w.Write(fields); err != nil {
@@ -246,7 +238,7 @@ func PrintRaw(servers []server.Server, queryFields []string) string {
 	}
 	fields := queryFields
 	if len(fields) == 0 {
-		fields = []string{"Name"}
+		fields = defaultRawFields
 	}
 	var b strings.Builder
 	for _, s := range servers {
@@ -258,4 +250,35 @@ func PrintRaw(servers []server.Server, queryFields []string) string {
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+func GetOutputFieldNames(format string, wide bool, queryFields []string) []string {
+	switch format {
+	case "json":
+		if len(queryFields) > 0 {
+			return queryFields
+		}
+		return nil
+	case "table":
+		cols := buildColumns(wide, queryFields)
+		fields := make([]string, len(cols))
+		for i, c := range cols {
+			fields[i] = c.Name
+		}
+		return fields
+	case "csv":
+		if len(queryFields) > 0 {
+			return queryFields
+		}
+		if wide {
+			return defaultTableWideFields
+		}
+		return defaultTableFields
+	case "raw":
+		if len(queryFields) > 0 {
+			return queryFields
+		}
+		return defaultRawFields
+	}
+	return nil
 }

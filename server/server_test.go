@@ -285,3 +285,52 @@ func TestServer_ListOutputModes(t *testing.T) {
 		assert.NotEmpty(t, dp67890.Alias)
 	})
 }
+
+func TestServer_ListSort(t *testing.T) {
+	var mq testapi.MockQuerier
+
+	t.Run("default sort is by Name ascending", func(t *testing.T) {
+		servers, err := List(t.Context(), &mq)
+		require.NoError(t, err)
+		require.Len(t, servers, 3)
+		assert.Equal(t, "DP-11111", servers[0].Name)
+		assert.Equal(t, "DP-12345", servers[1].Name)
+		assert.Equal(t, "DP-67890", servers[2].Name)
+	})
+
+	t.Run("sort by Price ascending", func(t *testing.T) {
+		servers, err := List(t.Context(), &mq, WithSort("Price"))
+		require.NoError(t, err)
+		require.Len(t, servers, 3)
+		assert.InDelta(t, 49.99, servers[0].Price, 0.01)
+		assert.InDelta(t, 149.99, servers[1].Price, 0.01)
+		assert.InDelta(t, 299.99, servers[2].Price, 0.01)
+	})
+
+	t.Run("sort by Location ascending", func(t *testing.T) {
+		servers, err := List(t.Context(), &mq, WithSort("Location"))
+		require.NoError(t, err)
+		require.Len(t, servers, 3)
+		assert.Equal(t, "Amsterdam", servers[0].Location)
+		assert.Equal(t, "New York", servers[1].Location)
+		assert.Equal(t, "Singapore", servers[2].Location)
+	})
+
+	t.Run("sort by Status ascending", func(t *testing.T) {
+		servers, err := List(t.Context(), &mq, WithSort("Status"))
+		require.NoError(t, err)
+		require.Len(t, servers, 3)
+		assert.Equal(t, "ACTIVE", servers[0].Status)
+		assert.Equal(t, "ACTIVE", servers[1].Status)
+		assert.Equal(t, "PROVISIONING", servers[2].Status)
+	})
+
+	t.Run("sort is case-insensitive", func(t *testing.T) {
+		servers, err := List(t.Context(), &mq, WithSort("name"))
+		require.NoError(t, err)
+		require.Len(t, servers, 3)
+		assert.Equal(t, "DP-11111", servers[0].Name)
+		assert.Equal(t, "DP-12345", servers[1].Name)
+		assert.Equal(t, "DP-67890", servers[2].Name)
+	})
+}

@@ -78,6 +78,8 @@ func parseContext(prev, word string) (completionType, string) {
 			return compTags, normalizeWord(value + word)
 		case "--query":
 			return compFields, normalizeWord(value + word)
+		case "--sort":
+			return compFields, normalizeWord(value + word)
 		}
 	}
 
@@ -102,6 +104,8 @@ func parseContext(prev, word string) (completionType, string) {
 			return compTags, normalizeWord(value + word)
 		case "-q":
 			return compFields, normalizeWord(value + word)
+		case "-S":
+			return compFields, normalizeWord(value + word)
 		}
 	}
 
@@ -122,6 +126,8 @@ func parseContext(prev, word string) (completionType, string) {
 	case "--tag", "-t":
 		return compTags, normalizeWord(word)
 	case "--query", "-q":
+		return compFields, normalizeWord(word)
+	case "--sort", "-S":
 		return compFields, normalizeWord(word)
 	case "ssh":
 		return compAliases, normalizeWord(word)

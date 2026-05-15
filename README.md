@@ -107,6 +107,10 @@ dp servers --tag env=prod --tag team=backend
 dp servers -q Name -q Alias -q IP
 dp servers --query Name --query Alias --query IP
 
+# Sort by field (ascending; defaults to Name)
+dp servers -S Price
+dp servers --sort Location
+
 # Raw output for scripting/completions (newline-separated values)
 dp servers -o raw -q Name           # outputs: DP-12345\nDP-67890
 dp servers -o raw -q Name -q Alias # outputs: DP-12345 my-server\nDP-67890 prod-server
@@ -142,6 +146,7 @@ After sourcing the completion script (see below), tab completion will work for:
 - Server names when using `-n` / `--name`
 - Tags when using `-t` / `--tag`
 - Queryable fields when using `-q` / `--query`
+- Sortable fields when using `-S` / `--sort`
 
 ### Quick setup (autodetect)
 

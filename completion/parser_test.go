@@ -243,6 +243,27 @@ func TestComplete_FlagQuery(t *testing.T) {
 	}
 }
 
+func TestComplete_FlagSort(t *testing.T) {
+	mock := defaultMock()
+	filter := NewParser(mock)
+
+	cases := []struct {
+		name string
+		prev string
+	}{
+		{"long flag", "--sort"},
+		{"short flag", "-S"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := filter.Complete(t.Context(), Request{Shell: ShellBash, Word: "id", Prev: tc.prev})
+			require.NoError(t, err)
+			assert.Equal(t, []string{"id"}, result)
+		})
+	}
+}
+
 func TestComplete_FlagValueLongForm(t *testing.T) {
 	mock := defaultMock()
 	filter := NewParser(mock)
@@ -261,6 +282,7 @@ func TestComplete_FlagValueLongForm(t *testing.T) {
 		{"name", "--name=server", "", []string{"server-a", "server-b"}},
 		{"tag", "--tag=prod", "", []string{"prod"}},
 		{"query", "--query=id", "", []string{"id"}},
+		{"sort", "--sort=id", "", []string{"id"}},
 	}
 
 	for _, tc := range cases {
@@ -290,6 +312,7 @@ func TestComplete_FlagValueShortForm(t *testing.T) {
 		{"name", "-nserver", "", []string{"server-a", "server-b"}},
 		{"tag", "-tprod", "", []string{"prod"}},
 		{"query", "-qid", "", []string{"id"}},
+		{"sort", "-Sid", "", []string{"id"}},
 	}
 
 	for _, tc := range cases {

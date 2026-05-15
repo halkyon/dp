@@ -48,6 +48,7 @@ type Options struct {
 	Power    []string
 	Tag      []string
 	Fields   []string
+	Sort     string
 }
 
 type Option func(*Options)
@@ -100,6 +101,12 @@ func WithFields(fields ...string) Option {
 	}
 }
 
+func WithSort(sort string) Option {
+	return func(o *Options) {
+		o.Sort = sort
+	}
+}
+
 func (o Options) ToOpts() []Option {
 	var opts []Option
 	if len(o.Name) > 0 {
@@ -125,6 +132,9 @@ func (o Options) ToOpts() []Option {
 	}
 	if len(o.Fields) > 0 {
 		opts = append(opts, WithFields(o.Fields...))
+	}
+	if o.Sort != "" {
+		opts = append(opts, WithSort(o.Sort))
 	}
 	return opts
 }
@@ -205,11 +215,71 @@ func List(ctx context.Context, client api.Querier, opts ...Option) ([]Server, er
 
 	servers := convertServers(result)
 
-	sort.Slice(servers, func(i, j int) bool {
-		return servers[i].Price > servers[j].Price
-	})
+	sortServers(servers, options.Sort)
 
 	return servers, nil
+}
+
+func sortServers(servers []Server, sortField string) {
+	if sortField == "" {
+		sortField = "Name"
+	}
+
+	sort.Slice(servers, func(i, j int) bool {
+		si, sj := servers[i], servers[j]
+		switch strings.ToLower(sortField) {
+		case "name":
+			return strings.ToLower(si.Name) < strings.ToLower(sj.Name)
+		case "alias":
+			return strings.ToLower(si.Alias) < strings.ToLower(sj.Alias)
+		case "status":
+			return strings.ToLower(si.Status) < strings.ToLower(sj.Status)
+		case "power", "powerstatus":
+			return strings.ToLower(si.PowerStatus) < strings.ToLower(sj.PowerStatus)
+		case "location":
+			return strings.ToLower(si.Location) < strings.ToLower(sj.Location)
+		case "ip":
+			return strings.ToLower(si.IP) < strings.ToLower(sj.IP)
+		case "os", "operatingsystem":
+			return strings.ToLower(si.OperatingSystem) < strings.ToLower(sj.OperatingSystem)
+		case "cpu":
+			return strings.ToLower(si.CPU) < strings.ToLower(sj.CPU)
+		case "memory":
+			return strings.ToLower(si.Memory) < strings.ToLower(sj.Memory)
+		case "price":
+			return si.Price < sj.Price
+		case "storage":
+			return strings.ToLower(si.Storage) < strings.ToLower(sj.Storage)
+		case "tags":
+			return strings.ToLower(strings.Join(si.Tags, ",")) < strings.ToLower(strings.Join(sj.Tags, ","))
+		case "hostname":
+			return strings.ToLower(si.Hostname) < strings.ToLower(sj.Hostname)
+		case "uptime":
+			return strings.ToLower(si.Uptime) < strings.ToLower(sj.Uptime)
+		case "currency":
+			return strings.ToLower(si.Currency) < strings.ToLower(sj.Currency)
+		case "billingperiod":
+			return strings.ToLower(si.BillingPeriod) < strings.ToLower(sj.BillingPeriod)
+		case "uplink":
+			return strings.ToLower(si.Uplink) < strings.ToLower(sj.Uplink)
+		case "raid":
+			return strings.ToLower(si.RAID) < strings.ToLower(sj.RAID)
+		case "ipmiurl":
+			return strings.ToLower(si.IPMIURL) < strings.ToLower(sj.IPMIURL)
+		case "ipmiuser":
+			return strings.ToLower(si.IPMIUser) < strings.ToLower(sj.IPMIUser)
+		case "bgp":
+			return !si.BGP && sj.BGP
+		case "ddos":
+			return strings.ToLower(si.DDOS) < strings.ToLower(sj.DDOS)
+		case "linkaggregation":
+			return !si.LinkAggregation && sj.LinkAggregation
+		case "devicetype":
+			return strings.ToLower(si.DeviceType) < strings.ToLower(sj.DeviceType)
+		default:
+			return strings.ToLower(si.Name) < strings.ToLower(sj.Name)
+		}
+	})
 }
 
 type node struct {

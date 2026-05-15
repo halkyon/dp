@@ -29,6 +29,8 @@ var (
 	flagTag      = new(stringSlice)
 	flagUser     = new(stringSlice)
 
+	sortField string
+
 	completionShell string
 	completionWord  string
 	completionPrev  string
@@ -79,6 +81,9 @@ func init() {
 	flag.Var(flagTag, "t", "Filter by tag (repeatable)")
 	flag.Var(flagTag, "tag", "Filter by tag (repeatable)")
 
+	flag.StringVar(&sortField, "S", "", "Sort by field")
+	flag.StringVar(&sortField, "sort", "", "Sort by field")
+
 	flag.Var(flagUser, "user", "SSH user (for ssh command)")
 
 	// generate-completion flags
@@ -119,6 +124,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "  -o, --output <format>   Output format: json, table, csv (default json)\n")
 			fmt.Fprintf(os.Stderr, "  -ow, --output-wide      Show more fields in table/csv\n")
 			fmt.Fprintf(os.Stderr, "  -q, --query <field>     Output specific field(s) (repeatable)\n")
+			fmt.Fprintf(os.Stderr, "  -S, --sort <field>      Sort by field\n")
 			fmt.Fprintf(os.Stderr, "\nFilters (shorthand, long form):\n")
 			fmt.Fprintf(os.Stderr, "  -n, --name <val>      Filter by name (repeatable)\n")
 			fmt.Fprintf(os.Stderr, "  -a, --alias <val>     Filter by alias (repeatable)\n")
@@ -162,6 +168,7 @@ func main() {
 		Status:   *flagStatus,
 		Power:    *flagPower,
 		Tag:      *flagTag,
+		Sort:     sortField,
 	}
 
 	// After re-parsing, remaining non-flag args are in flag.Args()
@@ -181,7 +188,8 @@ func validateCmdFlags(cmd string) error {
 		hasFilter := len(*flagName) > 0 || len(*flagAlias) > 0 || len(*flagLocation) > 0 ||
 			len(*flagRegion) > 0 || len(*flagStatus) > 0 || len(*flagPower) > 0 ||
 			len(*flagTag) > 0 || len(*queryFields) > 0 || outputFormatFlag != "" ||
-			outputWide || flag.Lookup("output-wide").Value.String() == "true"
+			outputWide || flag.Lookup("output-wide").Value.String() == "true" ||
+			sortField != ""
 		if hasFilter {
 			return errors.New("output and filter flags are only valid for the servers command")
 		}
