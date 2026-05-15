@@ -251,34 +251,3 @@ func PrintRaw(servers []server.Server, queryFields []string) string {
 	}
 	return b.String()
 }
-
-func GetOutputFieldNames(format string, wide bool, queryFields []string) []string {
-	switch format {
-	case "json":
-		if len(queryFields) > 0 {
-			return queryFields
-		}
-		return nil
-	case "table":
-		cols := buildColumns(wide, queryFields)
-		fields := make([]string, len(cols))
-		for i, c := range cols {
-			fields[i] = c.Name
-		}
-		return fields
-	case "csv":
-		if len(queryFields) > 0 {
-			return queryFields
-		}
-		if wide {
-			return defaultTableWideFields
-		}
-		return defaultTableFields
-	case "raw":
-		if len(queryFields) > 0 {
-			return queryFields
-		}
-		return defaultRawFields
-	}
-	return nil
-}

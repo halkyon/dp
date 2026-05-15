@@ -150,20 +150,6 @@ func (c *CLI) ShowServers(ctx context.Context, opts server.Options, outputFormat
 		if !known {
 			return fmt.Errorf("unknown sort field %q", opts.Sort)
 		}
-
-		outputFields := output.GetOutputFieldNames(outputFormat, wide, opts.Fields)
-		if outputFields != nil {
-			var found bool
-			for _, f := range outputFields {
-				if strings.EqualFold(f, opts.Sort) {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return fmt.Errorf("sort field %q is not in output fields", opts.Sort)
-			}
-		}
 	}
 
 	servers, err := server.List(ctx, c.client, opts.ToOpts()...)
